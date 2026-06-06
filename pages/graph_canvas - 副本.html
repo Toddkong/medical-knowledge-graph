@@ -1,0 +1,2865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图谱分析画布</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="../js/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 顶部操作栏 */
+        .top-toolbar {
+            background-color: #2d2d2d;
+            border-bottom: 1px solid #444;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+        }
+        
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            background-color: #3a3a3a;
+            border-radius: 4px;
+        }
+        
+        .toolbar-button {
+            background-color: transparent;
+            border: none;
+            color: #e0e0e0;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .toolbar-button:hover {
+            background-color: #4a4a4a;
+        }
+        
+        .toolbar-button.active {
+            background-color: #4a4a4a;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        /* 工具栏下拉选择器 */
+        .toolbar-select {
+            background-color: transparent;
+            border: none;
+            color: #e0e0e0;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            outline: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 28px;
+            appearance: none;
+        }
+        
+        /* 测试功能下拉菜单 */
+        .test-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #3a3a3a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #e2e8f0;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: #4a5568;
+            color: white;
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        /* 关系字段样式 */
+        .relationship-field {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: stretch;
+        }
+
+        .relationship-field input, .relationship-field select {
+            flex: 1;
+            padding: 8px 12px;
+            background-color: #4a5568;
+            color: white;
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .relationship-field button {
+            padding: 8px 12px;
+            background-color: #e53e3e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* 实体选择容器样式 */
+        .entity-select-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* 搜索输入框样式 */
+        .entity-search {
+            flex: 1;
+            padding: 8px 12px;
+            background-color: #4a5568;
+            color: white;
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .entity-search:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        /* 添加节点弹窗样式 */
+        #addNodePopup {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background-color: #2d3748;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            min-width: 150px;
+        }
+        
+        .test-dropdown.show {
+            display: block;
+        }
+        
+        .dropdown-item {
+            background-color: transparent;
+            border: none;
+            color: #e0e0e0;
+            padding: 8px 12px;
+            text-align: left;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #4a4a4a;
+        }
+        
+        .relative {
+            position: relative;
+        }
+        
+        .toolbar-select:hover {
+            background-color: #4a4a4a;
+        }
+        
+        /* 主要内容区域 */
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: visible;
+        }
+
+        /* 搜索框样式 */
+        /* 搜索框样式 */
+        #search-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 9999; /* 置于画布顶层 */
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #3a3a3a;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            flex-wrap: nowrap;
+            min-width: 280px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        #entitySearchInput {
+            padding: 8px 32px 8px 12px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            width: 220px;
+            font-size: 14px;
+            background-color: #4a5568;
+            color: #e0e0e0;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        #entitySearchInput:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        
+        #entitySearchInput::placeholder {
+            color: #aaa;
+        }
+
+        #entitySearchBtn {
+            padding: 8px 16px;
+            border: none;
+            background-color: #667eea;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        #entitySearchBtn:hover {
+            background-color: #5a67d8;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        #clearSearchBtn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        
+        #clearSearchBtn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+        }
+        
+        #search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #4a5568;
+            border: 1px solid #555;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            margin-top: 4px;
+            z-index: 10000;
+        }
+        
+        #search-results div {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: #e0e0e0;
+            transition: background-color 0.2s ease;
+        }
+        
+        #search-results div:hover {
+            background-color: #5a67d8;
+        }
+        
+        #search-results div.highlight {
+            background-color: #667eea;
+        }
+        
+        /* 图谱画布 */
+        #graphCanvas {
+            width: 100%;
+            height: 100%;
+            background-color: #2a2a2a;
+            z-index: 1000;
+            position: relative;
+        }
+        
+        /* 实体信息悬浮窗 */
+        #entityInfoPopup {
+            position: fixed;
+            background-color: rgba(30, 30, 30, 1);
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            width: 300px;
+            right: 20px;
+            top: 80px;
+            display: none;
+            color: #ffffff;
+        }
+        
+        #entityInfoPopup h3 {
+            margin: 0 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #667eea;
+            color: #667eea;
+            font-size: 18px;
+        }
+        
+        .entity-detail {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .entity-detail label {
+            display: inline-block;
+            width: 80px;
+            color: #999;
+            font-weight: bold;
+        }
+        
+        .entity-detail span {
+            color: #ffffff;
+            font-weight: normal;
+        }
+        
+        /* 合并后的统计与筛选面板样式 */
+        #statsAndFilterPanel {
+            position: fixed;
+            bottom: 16px; /* 与鹰眼图底部对齐 */
+            left: 20px;
+            max-height: calc(100vh - 80px); /* 调整最大高度 */
+            width: 120px; /* 设置宽度为120px */
+            background-color: rgba(45, 45, 45, 0.95);
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 2000; /* 提高z-index，确保显示在画布之上 */
+            font-size: 12px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            transition: all 0.3s ease; /* 添加过渡效果 */
+            display: block; /* 确保面板始终显示 */
+        }
+        
+        /* 响应式设计 */
+        @media (max-height: 768px) {
+            #statsAndFilterPanel {
+                max-height: calc(100vh - 200px); /* 在小屏幕上调整最大高度 */
+                bottom: 80px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            #statsAndFilterPanel {
+                width: 100px; /* 在小屏幕上进一步减小宽度 */
+            }
+            
+            /* 小屏幕上调整鹰眼图大小和位置 */
+            #overviewCanvas {
+                width: 150px;
+                height: 150px;
+                bottom: 10px;
+                right: 10px;
+                z-index: 3000; /* 确保在小屏幕上也有高z-index */
+            }
+            
+            /* 调整控制按钮位置 */
+            .overview-controls {
+                bottom: 10px;
+                right: 170px;
+                z-index: 3001; /* 确保在小屏幕上也有高z-index */
+            }
+        }
+        
+        #statsAndFilterPanel::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #statsAndFilterPanel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+        
+        #statsAndFilterPanel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        
+        #statsAndFilterPanel::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
+        .panel-header {
+            margin: 5px 0;
+            color: #e0e0e0;
+            font-size: 14px;
+            font-weight: bold;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+        
+        .category-section {
+            margin: 10px 0;
+        }
+        
+        .category-header {
+            color: #e0e0e0;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 5px 0;
+            padding-bottom: 3px;
+            border-bottom: 1px dashed #555;
+        }
+        
+        .filter-item {
+            margin: 5px 0;
+            color: #ccc;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .filter-item:hover {
+            color: #fff;
+        }
+        
+        .entity-type {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .count {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+        
+        .total-item {
+            margin-top: 5px;
+            padding-top: 5px;
+            border-top: 1px dashed #555;
+            color: #e0e0e0;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* 鹰眼图 */
+        #overviewCanvas {
+            position: fixed !important;
+            top: auto !important;
+            left: auto !important;
+            bottom: 16px !important;
+            right: 16px !important;
+            width: 200px !important;
+            height: 200px !important;
+            background-color: rgba(45, 45, 45, 0.8) !important;
+            border: 1px solid #555 !important;
+            border-radius: 4px !important;
+            z-index: 9999 !important; /* 最高优先级 */
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            transform: none !important;
+            box-sizing: border-box !important;
+            clear: both !important;
+        }
+        
+        /* 鹰眼图缩放控制按钮 */
+        .overview-controls {
+            position: fixed;
+            top: auto;
+            left: auto;
+            bottom: 16px;
+            right: 226px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 3001; /* 与鹰眼图保持相同的高z-index */
+            margin: 0;
+            padding: 0;
+            transform: none;
+        }
+        
+        .zoom-button {
+            width: 32px;
+            height: 32px;
+            background-color: rgba(45, 45, 45, 0.9);
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .zoom-button:hover {
+            background-color: rgba(65, 65, 65, 0.9);
+        }
+        
+        .zoom-button:active {
+            background-color: rgba(85, 85, 85, 0.9);
+        }
+        
+        /* Toast消息 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部操作栏 -->
+    <div class="top-toolbar">
+        <div class="flex items-center" style="gap: 12px;">
+            <div class="flex items-center">
+                <i class="fas fa-project-diagram text-purple-400 text-2xl mr-2"></i>
+                <span class="text-xl font-bold">生物医药图谱分析平台</span>
+            </div>
+        </div>
+        
+        <div class="toolbar-group">
+            <button id="selectToolBtn" class="toolbar-button active" title="选择工具">
+                <i class="fas fa-mouse-pointer"></i>
+                <span>选择</span>
+            </button>
+            <button id="addNodeBtn" class="toolbar-button" title="添加节点">
+                <i class="fas fa-plus-circle"></i>
+                <span>添加节点</span>
+            </button>
+            <button id="addEdgeBtn" class="toolbar-button" title="添加关系">
+                <i class="fas fa-link"></i>
+                <span>添加关系</span>
+            </button>
+        </div>
+        
+
+        
+        <div class="toolbar-group">
+            <button id="exportBtn" class="toolbar-button" title="导出">
+                <i class="fas fa-download"></i>
+                <span>导出</span>
+            </button>
+            <button id="saveBtn" class="toolbar-button" title="保存">
+                <i class="fas fa-save"></i>
+                <span>保存</span>
+            </button>
+        </div>
+        
+        <!-- 布局切换工具栏 -->
+        <div class="toolbar-group">
+            <select id="layoutSelect" class="toolbar-select" title="选择布局">
+                <option value="force">力导布局</option>
+                <option value="circular">环形布局</option>
+                <option value="grid">网格布局</option>
+                <option value="tree">树形布局</option>
+                <option value="radial">放射布局</option>
+                <option value="cluster">聚促布局</option>
+            </select>
+        </div>
+        
+        <!-- 属性功能按钮已删除 -->
+        
+
+    </div>
+    
+    <!-- 主要内容区域 -->
+    <div class="main-content">
+        <!-- 图谱画布 -->
+        <div id="graphCanvas">
+        </div>
+        
+        <!-- 搜索框容器 - 置于画布顶层 -->
+        <div id="search-container">
+            <div class="search-input-wrapper">
+                <input type="text" id="entitySearchInput" placeholder="搜索实体名称...">
+                <button id="clearSearchBtn" title="清空">×</button>
+            </div>
+            <button id="entitySearchBtn">搜索</button>
+            <div id="search-results" style="display: none;"></div>
+        </div>
+        
+
+        
+        <!-- 实体信息属性面板 -->
+        <div id="entityInfoPopup">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 id="popupEntityName" style="margin: 0; color: #667eea; font-size: 18px;">实体信息</h3>
+                <button id="closeEntityInfoBtn" onclick="document.getElementById('entityInfoPopup').style.display='none'; document.getElementById('toggleEntityInfoBtn').textContent='显示属性';" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; margin: 0; line-height: 1; z-index: 10000; position: relative;" title="关闭">×</button>
+            </div>
+            <div id="entityProperties">
+                <div class="entity-detail">
+                    <label>ID:</label>
+                    <span id="popupEntityId"></span>
+                </div>
+                <div class="entity-detail">
+                    <label>类型:</label>
+                    <span id="popupEntityType"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加节点弹窗 -->
+        <div id="addNodePopup" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #667eea; font-size: 20px;">添加新实体</h3>
+                <button id="closeAddNodeBtn" onclick="closeAddNodePopup()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; margin: 0; line-height: 1; z-index: 10000; position: relative;" title="关闭">×</button>
+            </div>
+            
+            <form id="addNodeForm">
+                <!-- 实体类型选择 -->
+                <div class="form-group">
+                    <label for="entityTypeSelect">实体类型:</label>
+                    <select id="entityTypeSelect" onchange="generateEntityProperties()">
+                        <option value="">请选择类型</option>
+                        <option value="disease">疾病</option>
+                        <option value="drug">药物</option>
+                        <option value="expert">专家</option>
+                        <option value="paper">论文</option>
+                        <option value="company">公司</option>
+                    </select>
+                </div>
+
+                <!-- 动态生成的实体属性 -->
+                <div id="entityPropertiesContainer" style="margin-top: 20px;"></div>
+
+                <!-- 关系添加区域 -->
+                <div style="margin-top: 30px;">
+                    <h4 style="margin-bottom: 10px; color: #667eea;">添加关系</h4>
+                    <div id="relationshipsContainer">
+                        <!-- 关系将动态添加到这里 -->
+                    </div>
+                    <button type="button" onclick="addRelationshipField()" style="margin-top: 10px; padding: 8px 16px; background-color: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-plus"></i> 添加关系
+                    </button>
+                </div>
+
+                <!-- 保存按钮 -->
+                <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeAddNodePopup()" style="padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                        取消
+                    </button>
+                    <button type="button" onclick="saveNewEntity()" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 统计与筛选面板 -->
+        <div id="statsAndFilterPanel" class="panel">
+            <div class="panel-header">统计与筛选</div>
+            <div class="panel-body">
+                <!-- 实体分类 -->
+                <div class="category-section">
+                    <div class="category-header">实体</div>
+                    <div class="filter-item">
+                        <span class="entity-type" style="background-color: #ff6b6b;"></span>
+                        <label>疾病</label>
+                        <span class="count" id="diseaseCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <span class="entity-type" style="background-color: #4ecdc4;"></span>
+                        <label>药品</label>
+                        <span class="count" id="drugCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <span class="entity-type" style="background-color: #45b7d1;"></span>
+                        <label>专家</label>
+                        <span class="count" id="expertCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <span class="entity-type" style="background-color: #96ceb4;"></span>
+                        <label>论文</label>
+                        <span class="count" id="paperCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <span class="entity-type" style="background-color: #ffeaa7;"></span>
+                        <label>公司</label>
+                        <span class="count" id="companyCount">0</span>
+                    </div>
+                    <div class="total-item">
+                        <label>实体总数:</label>
+                        <span id="totalEntities">0</span>
+                    </div>
+                </div>
+                
+                <!-- 关系分类 -->
+                <div class="category-section">
+                    <div class="category-header">关系</div>
+                    <div class="filter-item">
+                        <label>治疗药物:</label>
+                        <span class="count" id="treatmentCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <label>研究领域:</label>
+                        <span class="count" id="researchFieldCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <label>研究主题:</label>
+                        <span class="count" id="researchTopicCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <label>生产企业:</label>
+                        <span class="count" id="manufacturerCount">0</span>
+                    </div>
+                    <div class="filter-item">
+                        <label>作者:</label>
+                        <span class="count" id="authorCount">0</span>
+                    </div>
+                    <div class="total-item">
+                        <label>关系总数:</label>
+                        <span id="totalRelationships">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 鹰眼图 -->
+    <div id="overviewCanvas" style="position: fixed !important; top: auto !important; left: auto !important; bottom: 16px !important; right: 16px !important; width: 200px !important; height: 200px !important; background-color: rgba(45, 45, 45, 0.8) !important; border: 1px solid #555 !important; border-radius: 4px !important; z-index: 9999 !important; display: block !important; margin: 0 !important; padding: 0 !important; transform: none !important; box-sizing: border-box !important; clear: both !important;"></div>
+    
+    <!-- 鹰眼图缩放控制按钮 -->
+    <div class="overview-controls" style="position: fixed !important; top: auto !important; left: auto !important; bottom: 16px !important; right: 226px !important; display: flex !important; flex-direction: column !important; gap: 5px !important; z-index: 9999 !important;">
+        <button id="zoomInBtn" class="zoom-button" title="放大" style="width: 32px !important; height: 32px !important; background-color: rgba(45, 45, 45, 0.9) !important; border: 1px solid #555 !important; border-radius: 4px !important; color: #e0e0e0 !important; font-size: 14px !important; cursor: pointer !important; display: flex !important; justify-content: center !important; align-items: center !important;">
+            <i class="fas fa-search-plus"></i>
+        </button>
+        <button id="zoomOutBtn" class="zoom-button" title="缩小" style="width: 32px !important; height: 32px !important; background-color: rgba(45, 45, 45, 0.9) !important; border: 1px solid #555 !important; border-radius: 4px !important; color: #e0e0e0 !important; font-size: 14px !important; cursor: pointer !important; display: flex !important; justify-content: center !important; align-items: center !important;">
+            <i class="fas fa-search-minus"></i>
+        </button>
+        <button id="resetZoomBtn" class="zoom-button" title="重置视图" style="width: 32px !important; height: 32px !important; background-color: rgba(45, 45, 45, 0.9) !important; border: 1px solid #555 !important; border-radius: 4px !important; color: #e0e0e0 !important; font-size: 14px !important; cursor: pointer !important; display: flex !important; justify-content: center !important; align-items: center !important;">
+            <i class="fas fa-expand"></i>
+        </button>
+    </div>
+    
+    <!-- Toast消息容器 -->
+    <div class="toast"></div>
+    
+    <script>
+        // 实体和关系数据
+        let entitiesData = {};
+        let relationshipsData = [];
+        let selectedNode = null;
+        let chart = null;
+        let overviewChart = null;
+        let data = {};
+        
+        // chart变量已在第534行定义
+        
+        // 确保DOM加载完成后再初始化图表和加载数据
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为添加节点按钮添加事件监听器
+            const addNodeBtn = document.getElementById('addNodeBtn');
+            if (addNodeBtn) {
+                addNodeBtn.addEventListener('click', openAddNodePopup);
+            } else {
+                console.error('添加节点按钮未找到');
+            }
+
+            // 显式设置图表容器尺寸
+            const graphCanvas = document.getElementById('graphCanvas');
+            if (graphCanvas) {
+                // 确保图表容器占据整个可视区域
+                graphCanvas.style.width = '100vw';
+                graphCanvas.style.height = '100vh';
+                graphCanvas.style.position = 'absolute';
+                graphCanvas.style.top = '0';
+                graphCanvas.style.left = '0';
+                graphCanvas.style.zIndex = '1000';
+                graphCanvas.style.backgroundColor = '#2a2a2a';
+                
+                // 检查echarts是否加载完成
+                if (typeof echarts === 'undefined') {
+                    console.error('ECharts库未加载完成');
+                    // 尝试重新加载ECharts库
+                    const script = document.createElement('script');
+                    script.src = '../js/echarts.min.js';
+                    script.onload = function() {
+                        console.log('ECharts库重新加载完成');
+                        chart = echarts.init(graphCanvas);
+                        console.log('图表实例初始化:', chart);
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    // 初始化ECharts实例
+                    chart = echarts.init(graphCanvas);
+                    console.log('图表实例初始化:', chart);
+                }
+                
+                // 直接使用嵌入式JSON数据
+                data = {
+                    "entities": {
+                        "disease": [
+                            { "id": "d1", "name": "阿尔茨海默病", "type": "disease", "x": 200, "y": 100, "category": "神经系统疾病", "symptom": "记忆力减退", "prevalence": "1-3%", "mortality": "15-20%" },
+                            { "id": "d2", "name": "帕金森病", "type": "disease", "x": 500, "y": 100, "category": "神经系统疾病", "symptom": "震颤", "prevalence": "1-2%", "mortality": "10-15%" },
+                            { "id": "d3", "name": "脑卒中", "type": "disease", "x": 800, "y": 100, "category": "脑血管疾病", "symptom": "肢体无力", "prevalence": "2-3%", "mortality": "25-30%" },
+                            { "id": "d4", "name": "肺癌", "type": "disease", "x": 100, "y": 350, "category": "恶性肿瘤", "symptom": "咳嗽咯血", "prevalence": "0.5-1%", "mortality": "40-50%" },
+                            { "id": "d5", "name": "乳腺癌", "type": "disease", "x": 300, "y": 350, "category": "恶性肿瘤", "symptom": "乳房肿块", "prevalence": "0.8-1.2%", "mortality": "15-20%" },
+                            { "id": "d6", "name": "肝癌", "type": "disease", "x": 500, "y": 350, "category": "恶性肿瘤", "symptom": "肝区疼痛", "prevalence": "0.3-0.5%", "mortality": "60-70%" },
+                            { "id": "d7", "name": "胃癌", "type": "disease", "x": 700, "y": 350, "category": "恶性肿瘤", "symptom": "上腹部疼痛", "prevalence": "0.4-0.6%", "mortality": "35-45%" },
+                            { "id": "d8", "name": "糖尿病", "type": "disease", "x": 900, "y": 350, "category": "内分泌疾病", "symptom": "多饮多尿", "prevalence": "8-10%", "mortality": "5-10%" },
+                            { "id": "d9", "name": "高血压", "type": "disease", "x": 200, "y": 600, "category": "心血管疾病", "symptom": "头痛头晕", "prevalence": "20-25%", "mortality": "10-15%" },
+                            { "id": "d10", "name": "冠心病", "type": "disease", "x": 600, "y": 600, "category": "心血管疾病", "symptom": "胸痛", "prevalence": "5-8%", "mortality": "15-20%" }
+                        ],
+                        "drug": [
+                            { "id": "dr1", "name": "多奈哌齐", "type": "drug", "x": 300, "y": 200, "category": "胆碱酯酶抑制剂", "indication": "阿尔茨海默病", "dosage": "5mg/片", "side_effect": "恶心呕吐" },
+                            { "id": "dr2", "name": "美金刚", "type": "drug", "x": 400, "y": 200, "category": "NMDA受体拮抗剂", "indication": "阿尔茨海默病", "dosage": "10mg/片", "side_effect": "头晕头痛" },
+                            { "id": "dr3", "name": "左旋多巴", "type": "drug", "x": 600, "y": 200, "category": "多巴胺前体", "indication": "帕金森病", "dosage": "100mg/片", "side_effect": "异动症" },
+                            { "id": "dr4", "name": "司来吉兰", "type": "drug", "x": 700, "y": 200, "category": "MAO-B抑制剂", "indication": "帕金森病", "dosage": "5mg/片", "side_effect": "失眠" },
+                            { "id": "dr5", "name": "阿司匹林", "type": "drug", "x": 900, "y": 200, "category": "非甾体抗炎药", "indication": "心血管疾病", "dosage": "100mg/片", "side_effect": "胃肠道出血" },
+                            { "id": "dr6", "name": "阿托伐他汀", "type": "drug", "x": 200, "y": 450, "category": "他汀类药物", "indication": "高血脂", "dosage": "20mg/片", "side_effect": "肝功能异常" },
+                            { "id": "dr7", "name": "二甲双胍", "type": "drug", "x": 400, "y": 450, "category": "双胍类", "indication": "2型糖尿病", "dosage": "500mg/片", "side_effect": "腹泻" },
+                            { "id": "dr8", "name": "胰岛素", "type": "drug", "x": 600, "y": 450, "category": "降糖药", "indication": "糖尿病", "dosage": "100IU/ml", "side_effect": "低血糖" },
+                            { "id": "dr9", "name": "厄贝沙坦", "type": "drug", "x": 800, "y": 450, "category": "ARB类", "indication": "高血压", "dosage": "150mg/片", "side_effect": "头痛" },
+                            { "id": "dr10", "name": "硝酸甘油", "type": "drug", "x": 1000, "y": 450, "category": "硝酸酯类", "indication": "冠心病", "dosage": "0.5mg/片", "side_effect": "头痛" }
+                        ],
+                        "expert": [
+                            { "id": "e1", "name": "李教授", "type": "expert", "x": 100, "y": 50, "education": "博士", "location": "北京", "patents": 30, "papers": 45, "institution": "清华大学" },
+                            { "id": "e2", "name": "王医生", "type": "expert", "x": 400, "y": 50, "education": "硕士", "location": "上海", "patents": 15, "papers": 28, "institution": "上海交通大学" },
+                            { "id": "e3", "name": "张博士", "type": "expert", "x": 700, "y": 50, "education": "博士", "location": "广州", "patents": 22, "papers": 36, "institution": "中山大学" },
+                            { "id": "e4", "name": "刘主任", "type": "expert", "x": 1000, "y": 50, "education": "博士", "location": "深圳", "patents": 40, "papers": 52, "institution": "南方科技大学" },
+                            { "id": "e5", "name": "赵院长", "type": "expert", "x": 100, "y": 250, "education": "博士", "location": "杭州", "patents": 55, "papers": 70, "institution": "浙江大学" },
+                            { "id": "e6", "name": "陈教授", "type": "expert", "x": 400, "y": 250, "education": "博士", "location": "广州", "patents": 50, "papers": 20, "institution": "华南理工大学" },
+                            { "id": "e7", "name": "周医生", "type": "expert", "x": 700, "y": 550, "education": "硕士", "location": "武汉", "patents": 10, "papers": 18, "institution": "武汉大学" },
+                            { "id": "e8", "name": "吴博士", "type": "expert", "x": 1000, "y": 550, "education": "博士", "location": "成都", "patents": 28, "papers": 42, "institution": "四川大学" },
+                            { "id": "e9", "name": "郑主任", "type": "expert", "x": 300, "y": 550, "education": "博士", "location": "南京", "patents": 35, "papers": 48, "institution": "南京大学" },
+                            { "id": "e10", "name": "孙院长", "type": "expert", "x": 600, "y": 750, "education": "博士", "location": "西安", "patents": 45, "papers": 65, "institution": "西安交通大学" }
+                        ],
+                        "paper": [
+                            { "id": "p1", "name": "阿尔茨海默病最新研究", "type": "paper", "x": 100, "y": 150, "journal": "Nature Neuroscience", "year": "2022", "citation": "125", "impact_factor": "25.1" },
+                            { "id": "p2", "name": "帕金森病治疗进展", "type": "paper", "x": 500, "y": 150, "journal": "New England Journal of Medicine", "year": "2021", "citation": "98", "impact_factor": "91.2" },
+                            { "id": "p3", "name": "脑卒中预防指南", "type": "paper", "x": 900, "y": 150, "journal": "Lancet Neurology", "year": "2023", "citation": "76", "impact_factor": "34.4" },
+                            { "id": "p4", "name": "脑卒中康复研究", "type": "paper", "x": 700, "y": 250, "journal": "Journal of Neurology", "year": "2020", "citation": "45", "impact_factor": "8.3" },
+                            { "id": "p5", "name": "阿尔茨海默病机制", "type": "paper", "x": 900, "y": 250, "journal": "Cell", "year": "2019", "citation": "210", "impact_factor": "66.8" },
+                            { "id": "p6", "name": "帕金森病治疗", "type": "paper", "x": 200, "y": 550, "journal": "Movement Disorders", "year": "2021", "citation": "67", "impact_factor": "8.6" },
+                            { "id": "p7", "name": "肺癌早期诊断", "type": "paper", "x": 400, "y": 550, "journal": "Journal of Clinical Oncology", "year": "2022", "citation": "156", "impact_factor": "50.7" },
+                            { "id": "p8", "name": "乳腺癌治疗研究", "type": "paper", "x": 600, "y": 550, "journal": "Breast Cancer Research", "year": "2023", "citation": "89", "impact_factor": "11.1" },
+                            { "id": "p9", "name": "肝癌分子机制", "type": "paper", "x": 800, "y": 550, "journal": "Cancer Cell", "year": "2020", "citation": "198", "impact_factor": "38.5" },
+                            { "id": "p10", "name": "胃癌筛查技术", "type": "paper", "x": 1000, "y": 550, "journal": "Gastroenterology", "year": "2021", "citation": "112", "impact_factor": "33.8" }
+                        ],
+                        "company": [
+                            { "id": "c1", "name": "辉瑞制药", "type": "company", "x": 100, "y": 500, "country": "美国", "founded": "1849", "revenue": "$81.3B", "employees": "79,000" },
+                            { "id": "c2", "name": "罗氏制药", "type": "company", "x": 300, "y": 450, "country": "瑞士", "founded": "1896", "revenue": "$68.5B", "employees": "94,000" },
+                            { "id": "c3", "name": "诺华制药", "type": "company", "x": 500, "y": 450, "country": "瑞士", "founded": "1996", "revenue": "$54.6B", "employees": "101,400" },
+                            { "id": "c4", "name": "默沙东制药", "type": "company", "x": 700, "y": 450, "country": "美国", "founded": "1891", "revenue": "$50.5B", "employees": "71,000" },
+                            { "id": "c5", "name": "阿斯利康", "type": "company", "x": 900, "y": 450, "country": "英国", "founded": "1999", "revenue": "$44.4B", "employees": "76,400" },
+                            { "id": "c6", "name": "强生公司", "type": "company", "x": 200, "y": 650, "country": "美国", "founded": "1886", "revenue": "$93.8B", "employees": "149,000" },
+                            { "id": "c7", "name": "赛诺菲", "type": "company", "x": 400, "y": 650, "country": "法国", "founded": "1973", "revenue": "$39.4B", "employees": "101,500" },
+                            { "id": "c8", "name": "葛兰素史克", "type": "company", "x": 600, "y": 650, "country": "英国", "founded": "2000", "revenue": "$34.1B", "employees": "102,000" },
+                            { "id": "c9", "name": "礼来制药", "type": "company", "x": 800, "y": 650, "country": "美国", "founded": "1876", "revenue": "$28.3B", "employees": "35,000" },
+                            { "id": "c10", "name": "百时美施贵宝", "type": "company", "x": 1000, "y": 650, "country": "美国", "founded": "1887", "revenue": "$28.2B", "employees": "34,000" }
+                        ]
+                    },
+                    "relationships": [
+                        { "source": "d1", "target": "dr1", "name": "治疗药物" },
+                        { "source": "d1", "target": "dr2", "name": "治疗药物" },
+                        { "source": "d2", "target": "dr3", "name": "治疗药物" },
+                        { "source": "d2", "target": "dr4", "name": "治疗药物" },
+                        { "source": "d3", "target": "dr3", "name": "治疗药物" },
+                        { "source": "d3", "target": "dr5", "name": "治疗药物" },
+                        { "source": "e1", "target": "d1", "name": "研究领域" },
+                        { "source": "e2", "target": "d2", "name": "研究领域" },
+                        { "source": "e3", "target": "d3", "name": "研究领域" },
+                        { "source": "e4", "target": "d4", "name": "研究领域" },
+                        { "source": "p1", "target": "d1", "name": "研究主题" },
+                        { "source": "p2", "target": "d2", "name": "研究主题" },
+                        { "source": "c1", "target": "dr1", "name": "生产企业" },
+                        { "source": "c2", "target": "dr2", "name": "生产企业" },
+                        { "source": "c3", "target": "dr3", "name": "生产企业" },
+                        { "source": "c4", "target": "dr4", "name": "生产企业" },
+                        { "source": "e1", "target": "p1", "name": "作者" },
+                        { "source": "e2", "target": "p2", "name": "作者" },
+                        { "source": "e3", "target": "p3", "name": "作者" },
+                        { "source": "e4", "target": "p4", "name": "作者" },
+                        
+                        // 为无关联实体添加关系
+                        // 疾病与药品的关系
+                        { "source": "d5", "target": "dr6", "name": "治疗药物" },
+                        { "source": "d5", "target": "dr7", "name": "治疗药物" },
+                        { "source": "d6", "target": "dr8", "name": "治疗药物" },
+                        { "source": "d6", "target": "dr9", "name": "治疗药物" },
+                        { "source": "d7", "target": "dr10", "name": "治疗药物" },
+                        { "source": "d7", "target": "dr6", "name": "治疗药物" },
+                        { "source": "d8", "target": "dr7", "name": "治疗药物" },
+                        { "source": "d8", "target": "dr8", "name": "治疗药物" },
+                        { "source": "d9", "target": "dr9", "name": "治疗药物" },
+                        { "source": "d9", "target": "dr10", "name": "治疗药物" },
+                        { "source": "d10", "target": "dr6", "name": "治疗药物" },
+                        { "source": "d10", "target": "dr10", "name": "治疗药物" },
+                        
+                        // 专家与疾病的关系
+                        { "source": "e5", "target": "d5", "name": "研究领域" },
+                        { "source": "e6", "target": "d6", "name": "研究领域" },
+                        { "source": "e7", "target": "d7", "name": "研究领域" },
+                        { "source": "e8", "target": "d8", "name": "研究领域" },
+                        { "source": "e9", "target": "d9", "name": "研究领域" },
+                        { "source": "e10", "target": "d10", "name": "研究领域" },
+                        
+                        // 专家与论文的关系
+                        { "source": "e5", "target": "p5", "name": "作者" },
+                        { "source": "e5", "target": "p6", "name": "作者" },
+                        { "source": "e6", "target": "p7", "name": "作者" },
+                        { "source": "e6", "target": "p8", "name": "作者" },
+                        { "source": "e7", "target": "p9", "name": "作者" },
+                        { "source": "e7", "target": "p10", "name": "作者" },
+                        { "source": "e8", "target": "p5", "name": "作者" },
+                        { "source": "e9", "target": "p6", "name": "作者" },
+                        { "source": "e10", "target": "p7", "name": "作者" },
+                        
+                        // 论文与疾病的关系
+                        { "source": "p5", "target": "d1", "name": "研究主题" },
+                        { "source": "p6", "target": "d2", "name": "研究主题" },
+                        { "source": "p7", "target": "d4", "name": "研究主题" },
+                        { "source": "p8", "target": "d5", "name": "研究主题" },
+                        { "source": "p9", "target": "d6", "name": "研究主题" },
+                        { "source": "p10", "target": "d7", "name": "研究主题" },
+                        
+                        // 公司与药品的关系
+                        { "source": "c5", "target": "dr5", "name": "生产企业" },
+                        { "source": "c5", "target": "dr6", "name": "生产企业" },
+                        { "source": "c6", "target": "dr7", "name": "生产企业" },
+                        { "source": "c7", "target": "dr8", "name": "生产企业" },
+                        { "source": "c8", "target": "dr9", "name": "生产企业" },
+                        { "source": "c9", "target": "dr10", "name": "生产企业" },
+                        { "source": "c10", "target": "dr6", "name": "生产企业" }
+                    ]
+                };
+                
+                // 加载数据
+                entitiesData = data.entities;
+                relationshipsData = data.relationships;
+                
+                // 数据加载完成后初始化图表
+                initChart();
+                
+                // 初始化搜索功能
+                initSearchFunction();
+            } // 闭合图表容器条件块
+        }); // 闭合DOMContentLoaded事件监听器
+        
+        // 初始化图表
+        function initChart() {
+            // 加载数据
+            entitiesData = data.entities;
+            relationshipsData = data.relationships;
+            
+            // 构建图表数据
+            const graphData = buildGraphData();
+            
+            // 创建图表选项
+            const option = createChartOption();
+            
+            // 设置图表选项
+            chart.setOption(option);
+            
+            // 支持鼠标右键滑动画板的交互
+            let isRightDragging = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // 禁用默认的鼠标右键菜单
+            chart.getZr().on('contextmenu', function(event) {
+                event.event.preventDefault();
+            });
+            
+            // 鼠标右键按下事件
+            chart.getZr().on('mousedown', function(event) {
+                // 检查是否是右键点击
+                if (event.event.button === 2) {
+                    isRightDragging = true;
+                    lastX = event.event.clientX;
+                    lastY = event.event.clientY;
+                    // 设置鼠标样式
+                    graphCanvas.style.cursor = 'move';
+                }
+            });
+            
+            // 鼠标移动事件
+            chart.getZr().on('mousemove', function(event) {
+                if (isRightDragging) {
+                    const currentX = event.event.clientX;
+                    const currentY = event.event.clientY;
+                    
+                    // 计算移动距离
+                    const deltaX = currentX - lastX;
+                    const deltaY = currentY - lastY;
+                    
+                    // 执行画布平移
+                    chart.dispatchAction({
+                        type: 'pan',
+                        dx: deltaX,
+                        dy: deltaY
+                    });
+                    
+                    // 更新上一次位置
+                    lastX = currentX;
+                    lastY = currentY;
+                }
+            });
+            
+            // 鼠标释放事件
+            chart.getZr().on('mouseup', function(event) {
+                if (event.event.button === 2) {
+                    isRightDragging = false;
+                // 恢复鼠标样式
+                graphCanvas.style.cursor = 'default';
+                }
+            });
+            
+            // 鼠标离开图表区域事件
+            chart.getZr().on('mouseout', function(event) {
+                isRightDragging = false;
+                // 恢复鼠标样式
+                    graphCanvas.style.cursor = 'default';
+            });
+            
+            // 绑定图表点击事件
+            chart.on('click', function(params) {
+    
+                // 如果点击的是节点
+                if (params.dataType === 'node') {
+                    const nodeData = params.data;
+        
+                    
+                    // 根据实体ID从完整数据中查找实体信息
+                    let fullEntityData = null;
+                    for (const entityType in entitiesData) {
+                        if (entitiesData.hasOwnProperty(entityType)) {
+                            const entityFound = entitiesData[entityType].find(entity => entity.id === nodeData.id);
+                            if (entityFound) {
+                                fullEntityData = entityFound;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 使用setOption直接修改节点样式来实现高亮
+                    const option = chart.getOption();
+                    if (option && option.series && option.series[0] && option.series[0].data) {
+                        const clickedNode = option.series[0].data[params.dataIndex];
+                        const clickedNodeId = clickedNode.id;
+                        
+                        // 检查是否是取消选中（点击已选中的节点）
+                        let isDeselect = false;
+                        option.series[0].data.forEach((node, index) => {
+                            if (node.id === clickedNodeId && node.itemStyle && node.itemStyle.color === '#ffd700') {
+                                isDeselect = true;
+                            }
+                        });
+                        
+                        if (isDeselect) {
+                            // 取消选中：恢复所有节点和边的原始样式
+                            option.series[0].data.forEach((node, index) => {
+                                if (node.originalColor) {
+                                    node.itemStyle = { color: node.originalColor };
+                                } else {
+                                    node.itemStyle = null;
+                                }
+                                node.label = null;
+                            });
+                            
+                            if (option.series[0].links) {
+                                option.series[0].links.forEach((link, index) => {
+                                    link.lineStyle = null;
+                                });
+                            }
+                            
+                            // 隐藏属性弹窗
+                            closeEntityInfoPopup();
+                            
+                            // 清空选中状态
+                            selectedNode = null;
+                
+                        } else {
+                            // 获取与当前节点关联的节点ID列表
+                            const relatedNodeIds = new Set();
+                            relatedNodeIds.add(clickedNodeId);
+                            
+                            if (option.series[0].links) {
+                                option.series[0].links.forEach((link, index) => {
+                                    if (link.source === clickedNodeId) {
+                                        relatedNodeIds.add(link.target);
+                                    } else if (link.target === clickedNodeId) {
+                                        relatedNodeIds.add(link.source);
+                                    }
+                                });
+                            }
+                            
+                            // 更新所有节点的样式
+                            option.series[0].data.forEach((node, index) => {
+                                if (node.id === clickedNodeId) {
+                                    // 高亮当前点击的节点
+                                    node.itemStyle = {
+                                        color: '#ffd700',
+                                        shadowBlur: 20,
+                                        shadowColor: 'rgba(255, 215, 0, 0.8)',
+                                        borderColor: '#ffffff',
+                                        borderWidth: 3
+                                    };
+                                    node.label = {
+                                        color: '#fff',
+                                        fontWeight: 'bold',
+                                        fontSize: 14
+                                    };
+                                } else if (relatedNodeIds.has(node.id)) {
+                                    // 关联节点：保持原始颜色，略微高亮
+                                    node.itemStyle = {
+                                        color: node.originalColor,
+                                        shadowBlur: 10,
+                                        shadowColor: 'rgba(255, 255, 255, 0.3)'
+                                    };
+                                    node.label = {
+                                        color: '#fff',
+                                        fontSize: 12
+                                    };
+                                } else {
+                                    // 非关联节点：变暗
+                                    node.itemStyle = {
+                                        color: node.originalColor,
+                                        opacity: 0.3
+                                    };
+                                    node.label = {
+                                        color: '#aaa',
+                                        fontSize: 10
+                                    };
+                                }
+                            });
+                            
+                            // 重置所有边的样式，然后高亮关联的边
+                            if (option.series[0].links) {
+                                option.series[0].links.forEach((link, index) => {
+                                    if (link.source === clickedNodeId || link.target === clickedNodeId) {
+                                        link.lineStyle = {
+                                            width: 6,
+                                            color: '#ffd700'
+                                        };
+                                    } else {
+                                        link.lineStyle = {
+                                            width: 2,
+                                            color: '#aaa',
+                                            opacity: 0.3
+                                        };
+                                    }
+                                });
+                            }
+                            
+                            // 显示实体属性面板
+                    
+                            showEntityInfoPopup(fullEntityData);
+                            
+                            // 更新选中状态
+                            selectedNode = fullEntityData;
+                
+                        }
+                        
+                        // 应用更新
+                        chart.setOption(option);
+            
+                    }
+                    
+                    // 保存节点点击记录
+                    saveClickRecord(fullEntityData);
+                }
+            });
+            
+            // 初始化统计信息
+            updateStats();
+            
+            // 初始化鹰眼图
+            initOverviewChart();
+            
+            // 设置主画布视图变化监听
+            setupMainChartListeners();
+            
+            // 调试代码：检查面板和鹰眼图的显示状态
+
+        }
+        
+        // 初始化鹰眼图
+        function initOverviewChart() {
+            try {
+                const overviewCanvas = document.getElementById('overviewCanvas');
+    
+                
+                // 确保canvas元素存在
+                if (overviewCanvas) {
+                    overviewChart = echarts.init(overviewCanvas);
+                    const overviewOption = createOverviewOption();
+                    overviewChart.setOption(overviewOption);
+        
+                }
+            } catch (error) {
+                console.error('初始化鹰眼图失败:', error);
+            }
+        }
+        
+        // 保存节点点击记录
+        function saveClickRecord(nodeData) {
+            // 简单实现：将点击记录保存到控制台日志
+
+        }
+        
+
+        
+        // 初始化默认数据
+        function initDefaultData() {
+            entitiesData = {
+                disease: [
+                    { id: 'd1', name: '糖尿病', type: 'disease', x: 200, y: 300 },
+                    { id: 'd2', name: '高血压', type: 'disease', x: 400, y: 200 },
+                    { id: 'd3', name: '冠心病', type: 'disease', x: 600, y: 300 },
+                    { id: 'd4', name: '脑卒中', type: 'disease', x: 800, y: 200 },
+                    { id: 'd5', name: '阿尔茨海默病', type: 'disease', x: 300, y: 500 },
+                    { id: 'd6', name: '帕金森病', type: 'disease', x: 500, y: 500 },
+                    { id: 'd7', name: '肺癌', type: 'disease', x: 700, y: 500 },
+                    { id: 'd8', name: '乳腺癌', type: 'disease', x: 900, y: 500 },
+                    { id: 'd9', name: '肝癌', type: 'disease', x: 400, y: 700 },
+                    { id: 'd10', name: '胃癌', type: 'disease', x: 600, y: 700 }
+                ],
+                drug: [
+                    { id: 'dr1', name: '胰岛素', type: 'drug', x: 200, y: 400 },
+                    { id: 'dr2', name: '二甲双胍', type: 'drug', x: 400, y: 400 },
+                    { id: 'dr3', name: '阿司匹林', type: 'drug', x: 600, y: 400 },
+                    { id: 'dr4', name: '阿托伐他汀', type: 'drug', x: 800, y: 400 },
+                    { id: 'dr5', name: '氯沙坦', type: 'drug', x: 300, y: 600 },
+                    { id: 'dr6', name: '美托洛尔', type: 'drug', x: 700, y: 600 }
+                ],
+                expert: [
+                    { id: 'e1', name: '张三', type: 'expert', x: 100, y: 200 },
+                    { id: 'e2', name: '李四', type: 'expert', x: 900, y: 200 },
+                    { id: 'e3', name: '王五', type: 'expert', x: 100, y: 500 },
+                    { id: 'e4', name: '赵六', type: 'expert', x: 900, y: 500 }
+                ],
+                paper: [
+                    { id: 'p1', name: '糖尿病治疗研究', type: 'paper', x: 100, y: 300 },
+                    { id: 'p2', name: '高血压新疗法', type: 'paper', x: 900, y: 300 },
+                    { id: 'p3', name: '冠心病预防', type: 'paper', x: 100, y: 600 },
+                    { id: 'p4', name: '脑卒中康复', type: 'paper', x: 900, y: 600 }
+                ],
+                company: [
+                    { id: 'c1', name: '制药公司A', type: 'company', x: 200, y: 500 },
+                    { id: 'c2', name: '制药公司B', type: 'company', x: 400, y: 500 },
+                    { id: 'c3', name: '制药公司C', type: 'company', x: 600, y: 500 },
+                    { id: 'c4', name: '制药公司D', type: 'company', x: 800, y: 500 }
+                ]
+            };
+            
+            relationshipsData = [
+                { source: 'd1', target: 'dr1', name: '治疗药物' },
+                { source: 'd1', target: 'dr2', name: '治疗药物' },
+                { source: 'd2', target: 'dr3', name: '治疗药物' },
+                { source: 'd2', target: 'dr4', name: '治疗药物' },
+                { source: 'd3', target: 'dr3', name: '治疗药物' },
+                { source: 'd3', target: 'dr5', name: '治疗药物' },
+                { source: 'd4', target: 'dr6', name: '治疗药物' },
+                { source: 'e1', target: 'd1', name: '研究领域' },
+                { source: 'e2', target: 'd2', name: '研究领域' },
+                { source: 'e3', target: 'd3', name: '研究领域' },
+                { source: 'e4', target: 'd4', name: '研究领域' },
+                { source: 'p1', target: 'd1', name: '研究主题' },
+                { source: 'p2', target: 'd2', name: '研究主题' },
+                { source: 'c1', target: 'dr1', name: '生产企业' },
+                { source: 'c2', target: 'dr2', name: '生产企业' },
+                { source: 'c3', target: 'dr3', name: '生产企业' },
+                { source: 'c4', target: 'dr4', name: '生产企业' },
+                { source: 'e1', target: 'p1', name: '作者' },
+                { source: 'e2', target: 'p2', name: '作者' },
+                { source: 'e3', target: 'p3', name: '作者' },
+                { source: 'e4', target: 'p4', name: '作者' }
+            ];
+            
+            // 图表将在调用函数后统一初始化
+            
+            // 更新统计
+            updateStats();
+        }
+        
+        // 获取实体颜色
+        function getEntityColor(type) {
+            switch(type) {
+                case 'disease': return '#ff6b6b';
+                case 'drug': return '#4ecdc4';
+                case 'expert': return '#45b7d1';
+                case 'paper': return '#96ceb4';
+                case 'company': return '#ffeaa7';
+                default: return '#ccc';
+            }
+        }
+        
+        // 构建图谱数据
+        function buildGraphData() {
+            // 使用实际加载的entitiesData和relationshipsData
+            const nodes = [];
+            const links = [];
+            
+            // 实体颜色映射
+            const entityColors = {
+                disease: '#ff6b6b',
+                drug: '#4ecdc4',
+                expert: '#45b7d1',
+                paper: '#96ceb4',
+                company: '#ffcc5c'
+            };
+            
+            // 遍历所有实体类型
+            for (const entityType in entitiesData) {
+                if (entitiesData.hasOwnProperty(entityType)) {
+                    entitiesData[entityType].forEach(entity => {
+                        // 创建节点数据，保留id、name、type等必要属性，移除固定坐标（x, y）
+                        const node = {
+                            id: entity.id,
+                            name: entity.name,
+                            type: entity.type,
+                            symbolSize: 40,
+                            originalColor: entityColors[entity.type] || '#ccc',
+                            itemStyle: { color: entityColors[entity.type] || '#ccc' },
+                        };
+                        
+                        // 添加实体的其他属性
+                        for (const [key, value] of Object.entries(entity)) {
+                            if (key !== 'id' && key !== 'name' && key !== 'type' && key !== 'x' && key !== 'y') {
+                                node[key] = value;
+                            }
+                        }
+                        
+                        nodes.push(node);
+                    });
+                }
+            }
+            
+            // 遍历所有关系
+            relationshipsData.forEach(relation => {
+                links.push({
+                    source: relation.source,
+                    target: relation.target,
+                    name: relation.name,
+                    lineStyle: { width: 2, color: '#aaa' }
+                });
+            });
+            
+            return { nodes, links };
+        }
+        
+        // 创建图表选项
+        function createChartOption() {
+            // 先调用一次buildGraphData，避免重复计算
+            const graphData = buildGraphData();
+            
+            return {
+                backgroundColor: '#1a1a1a',
+                // 确保图表能响应鼠标事件
+                silent: false,
+                tooltip: {
+                    formatter: function(params) {
+                        if (params.dataType === 'node') {
+                            return `${params.name}<br>类型: ${params.data.type}`;
+                        } else if (params.dataType === 'edge') {
+                            return `${params.data.name}`;
+                        }
+                    },
+                    backgroundColor: 'rgba(45, 45, 45, 0.9)',
+                    borderColor: '#555',
+                    textStyle: {
+                        color: '#e0e0e0'
+                    }
+                },
+                series: [
+                    {
+                        type: 'graph',
+                        layout: 'force',
+                        symbolSize: 40,
+                        roam: true,
+                        // 确保系列能响应鼠标事件
+                        silent: false,
+                        // 确保节点可点击
+                        clickable: true,
+                        label: {
+                            show: true,
+                            position: 'bottom',
+                            formatter: '{b}',
+                            color: '#e0e0e0',
+                            backgroundColor: 'rgba(45, 45, 45, 0.8)',
+                            borderColor: '#555',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            padding: [4, 8]
+                        },
+                        force: {
+                            repulsion: 800,
+                            gravity: 0.1,
+                            edgeLength: [50, 150],
+                            layoutAnimation: true
+                        },
+                        edgeSymbol: ['none', 'arrow'],
+                        edgeSymbolSize: 10,
+                        edgeLabel: {
+                            show: true,
+                            fontSize: 12,
+                            color: '#aaa',
+                            backgroundColor: 'rgba(45, 45, 45, 0.8)',
+                            borderColor: '#555',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            padding: [4, 8],
+                            formatter: function(params) {
+                                return params.data.name || '无关系名称';
+                            }
+                        },
+                        data: graphData.nodes,
+                        links: graphData.links,
+                        lineStyle: {
+                            opacity: 0.9,
+                            width: 2,
+                            curveness: 0,
+                            color: '#aaa'
+                        },
+                        emphasis: {
+                            focus: 'adjacency',
+                            lineStyle: {
+                                width: 6,
+                                color: '#ffd700'
+                            },
+                            itemStyle: {
+                                color: '#ffd700',
+                                shadowBlur: 20,
+                                shadowColor: 'rgba(255, 215, 0, 0.8)',
+                                borderColor: '#ffffff',
+                                borderWidth: 3
+                            },
+                            label: {
+                                color: '#fff',
+                                fontWeight: 'bold',
+                                fontSize: 14
+                            }
+                        },
+                        selected: {
+                            itemStyle: {
+                                color: '#ffd700',
+                                shadowBlur: 15,
+                                shadowColor: 'rgba(255, 215, 0, 0.8)',
+                                borderColor: '#ffffff',
+                                borderWidth: 3,
+                                borderType: 'solid'
+                            },
+                            symbolSize: 60,
+                            label: {
+                                color: '#fff',
+                                fontWeight: 'bold',
+                                fontSize: 14
+                            }
+                        },
+                        selectedMode: 'single',
+                        draggable: true,
+                        // 点击事件已移至chart.on('click')中统一处理
+                        // 添加鼠标移出事件，确保不会自动取消选中
+                        onmouseout: function(params) {
+                            // 不执行任何反选操作，保持当前选中状态
+                            // 只处理节点类型的事件
+                            if (params.dataType === 'node') {
+                                // 无需任何操作，保持当前选中状态即可
+                            }
+                        }
+                    }]
+            };
+        }
+        
+        // 初始化鹰眼图
+        // overviewChart变量已在全局范围声明
+        
+        // 构建鹰眼图数据
+        function buildOverviewData() {
+            const graphData = buildGraphData();
+            const overviewData = {
+                nodes: [],
+                links: []
+            };
+            
+            // 为节点生成默认坐标（如果没有x和y属性）
+            const centerX = 0;
+            const centerY = 0;
+            const radius = 100;
+            
+            graphData.nodes.forEach((node, index) => {
+                // 如果节点没有x或y属性，为其生成默认坐标
+                const angle = (index / graphData.nodes.length) * Math.PI * 2;
+                const x = node.x !== undefined ? node.x : centerX + Math.cos(angle) * radius;
+                const y = node.y !== undefined ? node.y : centerY + Math.sin(angle) * radius;
+                
+                overviewData.nodes.push({
+                    name: node.name,
+                    x: x,
+                    y: y,
+                    itemStyle: {
+                        color: node.itemStyle.color
+                    }
+                });
+            });
+            
+            // 简化关系数据，只保留连接信息
+            graphData.links.forEach(link => {
+                overviewData.links.push({
+                    source: link.source,
+                    target: link.target
+                });
+            });
+            
+            return overviewData;
+        }
+        
+        // 配置鹰眼图选项
+        function createOverviewOption() {
+            const overviewData = buildOverviewData();
+            return {
+                backgroundColor: 'rgba(45, 45, 45, 0.8)',
+                tooltip: {
+                    show: false
+                },
+                series: [
+                    {
+                        type: 'graph',
+                        layout: 'none',
+                        symbolSize: 3, // 小的颜色点
+                        roam: true, // 启用放大缩小功能
+                        label: {
+                            show: false
+                        },
+                        edgeSymbol: ['none', 'none'], // 不显示箭头
+                        edgeSymbolSize: 1,
+                        data: overviewData.nodes,
+                        links: overviewData.links,
+                        lineStyle: {
+                            opacity: 0.2, // 降低关系线透明度
+                            width: 0.5, // 细关系线
+                            curveness: 0
+                        },
+                        itemStyle: {
+                            opacity: 0.8
+                        },
+                        // 绑定缩放事件，实现与主画布的联动
+                        emphasis: {
+                            focus: 'adjacency',
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowColor: 'rgba(255, 255, 255, 0.3)'
+                            }
+                        },
+                        // 绑定缩放事件
+                        onzoom: function(params) {
+                            if (!chart) return;
+                            
+                            if (params.zoom) {
+                                // 获取当前缩放比例
+                                const zoom = params.zoom;
+                                // 同步到主画布
+                                try {
+                                    chart.dispatchAction({
+                                        type: 'zoom',
+                                        zoom: zoom
+                                    });
+                                } catch (error) {
+                                    console.error('同步缩放事件到主画布失败:', error);
+                                }
+                            }
+                            if (params.rotation) {
+                                // 获取当前旋转角度
+                                const rotation = params.rotation;
+                                // 同步到主画布
+                                try {
+                                    chart.dispatchAction({
+                                        type: 'rotate',
+                                        rotation: rotation
+                                    });
+                                } catch (error) {
+                                    console.error('同步旋转事件到主画布失败:', error);
+                                }
+                            }
+                        },
+                        // 绑定平移事件
+                        onpan: function(params) {
+                            if (!chart) return;
+                            
+                            if (params.deltaX || params.deltaY) {
+                                // 获取平移偏移量
+                                const deltaX = params.deltaX || 0;
+                                const deltaY = params.deltaY || 0;
+                                // 同步到主画布
+                                try {
+                                    chart.dispatchAction({
+                                        type: 'pan',
+                                        dx: deltaX,
+                                        dy: deltaY
+                                    });
+                                } catch (error) {
+                                    console.error('同步平移事件到主画布失败:', error);
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'custom',
+                        renderItem: function(params, api) {
+                            // 绘制红色矩形框表示当前主画布的可视区域
+                            if (!mainChartRect) {
+                                // 返回一个不可见的元素，避免错误
+                                return {
+                                    type: 'rect',
+                                    shape: {
+                                        x: 0,
+                                        y: 0,
+                                        width: 0,
+                                        height: 0
+                                    },
+                                    style: {
+                                        opacity: 0
+                                    }
+                                };
+                            }
+                            
+                            try {
+                                const x = api.value(0);
+                                const y = api.value(1);
+                                const width = api.value(2);
+                                const height = api.value(3);
+                                
+                                return {
+                                    type: 'rect',
+                                    shape: {
+                                        x: x,
+                                        y: y,
+                                        width: width,
+                                        height: height
+                                    },
+                                    style: {
+                                        stroke: '#ff0000',
+                                        fill: 'rgba(255, 0, 0, 0.1)',
+                                        lineWidth: 2
+                                    }
+                                };
+                            } catch (error) {
+                                console.error('绘制鹰眼图红色框失败:', error);
+                                // 返回一个不可见的元素，避免错误
+                                return {
+                                    type: 'rect',
+                                    shape: {
+                                        x: 0,
+                                        y: 0,
+                                        width: 0,
+                                        height: 0
+                                    },
+                                    style: {
+                                        opacity: 0
+                                    }
+                                };
+                            }
+                        },
+                        data: mainChartRect ? [[mainChartRect.x, mainChartRect.y, mainChartRect.width, mainChartRect.height]] : [[0, 0, 0, 0]]
+                    }
+                ]
+            };
+        }
+        
+        // 窗口大小变化时重新调整图表大小
+        window.addEventListener('resize', function() {
+            if (chart) {
+                chart.resize();
+            }
+            if (overviewChart) {
+                overviewChart.resize();
+            }
+        });
+        
+        // 显示实体信息悬浮窗
+        function showEntityInfoPopup(entity, event) {
+            console.log('=== showEntityInfoPopup函数调用 ===');
+            console.log('实体数据:', entity);
+            
+            // 检查实体数据是否完整
+            if (!entity) {
+                console.error('实体数据为空');
+                return;
+            }
+            
+            // 检查DOM元素是否存在
+            const popup = document.getElementById('entityInfoPopup');
+            if (!popup) {
+                console.error('弹窗DOM元素不存在');
+                return;
+            }
+            
+            const nameElement = document.getElementById('popupEntityName');
+            const idElement = document.getElementById('popupEntityId');
+            const typeElement = document.getElementById('popupEntityType');
+            const propertiesContainer = document.getElementById('entityProperties');
+            
+            // 设置基本信息
+            if (nameElement) {
+                nameElement.textContent = entity.name || '未知名称';
+            }
+            if (idElement) {
+                idElement.textContent = entity.id || '未知ID';
+            }
+            if (typeElement) {
+                typeElement.textContent = entity.type || '未知类型';
+            }
+            
+            // 清空现有属性
+            if (propertiesContainer) {
+                // 保留前两个子元素（ID和类型）
+                while (propertiesContainer.children.length > 2) {
+                    propertiesContainer.removeChild(propertiesContainer.lastChild);
+                }
+                
+                // 动态添加所有其他属性
+                for (const [key, value] of Object.entries(entity)) {
+                    if (key !== 'id' && key !== 'type' && key !== 'name' && key !== 'x' && key !== 'y' && key !== 'symbolSize' && key !== 'itemStyle') {
+                        const propertyDiv = document.createElement('div');
+                        propertyDiv.className = 'entity-detail';
+                        
+                        const label = document.createElement('label');
+                        label.textContent = key.charAt(0).toUpperCase() + key.slice(1) + ':';
+                        
+                        const span = document.createElement('span');
+                        span.textContent = value;
+                        
+                        propertyDiv.appendChild(label);
+                        propertyDiv.appendChild(span);
+                        propertiesContainer.appendChild(propertyDiv);
+                    }
+                }
+            }
+            
+            // 显示弹窗
+            // 强制显示弹窗，使用内联样式覆盖所有CSS规则
+            popup.style.display = 'block';
+            popup.style.position = 'fixed';
+            popup.style.right = '20px';
+            popup.style.top = '80px';
+            popup.style.width = '300px';
+            popup.style.backgroundColor = 'rgba(30, 30, 30, 1)';
+            popup.style.border = '2px solid #667eea';
+            popup.style.borderRadius = '8px';
+            popup.style.padding = '16px';
+            popup.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.5)';
+            popup.style.color = '#ffffff';
+            popup.style.visibility = 'visible';
+            popup.style.opacity = '1';
+            popup.style.zIndex = '9999';
+            
+            console.log('弹窗已设置为显示状态');
+        }
+        
+        // 页面加载完成后自动显示第一个实体的属性面板
+        document.addEventListener('DOMContentLoaded', function() {
+            // 延迟2秒显示，确保所有数据都已加载完成
+            setTimeout(function() {
+                if (entitiesData && entitiesData['disease'] && entitiesData['disease'].length > 0) {
+                    const firstEntity = entitiesData['disease'][0];
+                    showEntityInfoPopup(firstEntity);
+                }
+            }, 2000);
+        });
+        
+        // 属性按钮相关函数已删除
+        
+        // 页面加载完成后自动绑定显示属性按钮和关闭按钮事件
+        document.addEventListener('DOMContentLoaded', function() {
+            // 关闭按钮已经在HTML中直接绑定了onclick事件
+        });
+        
+        // 关闭实体信息悬浮窗
+        function closeEntityInfoPopup() {
+            const popup = document.getElementById('entityInfoPopup');
+            if (popup) {
+                popup.style.display = 'none';
+                // 确保重置所有可能影响显示的样式
+                popup.style.visibility = 'hidden';
+                popup.style.opacity = '0';
+            }
+        }
+
+        // 添加节点弹窗相关函数
+        let currentRelationshipIndex = 0;
+
+        // 实体类型对应的属性配置
+        const entityPropertiesConfig = {
+            disease: [
+                { name: 'name', label: '疾病名称', type: 'text', required: true },
+                { name: 'category', label: '疾病分类', type: 'text' },
+                { name: 'description', label: '疾病描述', type: 'text' },
+                { name: 'symptoms', label: '症状', type: 'text' }
+            ],
+            drug: [
+                { name: 'name', label: '药物名称', type: 'text', required: true },
+                { name: 'category', label: '药物分类', type: 'text' },
+                { name: 'dosage', label: '剂量', type: 'text' },
+                { name: 'sideEffects', label: '副作用', type: 'text' }
+            ],
+            expert: [
+                { name: 'name', label: '专家姓名', type: 'text', required: true },
+                { name: 'title', label: '职称', type: 'text' },
+                { name: 'institution', label: '所属机构', type: 'text' },
+                { name: 'specialty', label: '专业领域', type: 'text' }
+            ],
+            paper: [
+                { name: 'name', label: '论文标题', type: 'text', required: true },
+                { name: 'author', label: '作者', type: 'text' },
+                { name: 'journal', label: '期刊', type: 'text' },
+                { name: 'year', label: '发表年份', type: 'number' }
+            ],
+            company: [
+                { name: 'name', label: '公司名称', type: 'text', required: true },
+                { name: 'industry', label: '行业', type: 'text' },
+                { name: 'location', label: '所在地', type: 'text' },
+                { name: 'establishedYear', label: '成立年份', type: 'number' }
+            ]
+        };
+
+        // 打开添加节点弹窗
+        function openAddNodePopup() {
+            const popup = document.getElementById('addNodePopup');
+            if (popup) {
+                popup.style.display = 'block';
+                // 重置表单
+                document.getElementById('addNodeForm').reset();
+                document.getElementById('entityPropertiesContainer').innerHTML = '';
+                document.getElementById('relationshipsContainer').innerHTML = '';
+                currentRelationshipIndex = 0;
+            }
+        }
+
+        // 关闭添加节点弹窗
+        function closeAddNodePopup() {
+            const popup = document.getElementById('addNodePopup');
+            if (popup) {
+                popup.style.display = 'none';
+            }
+        }
+
+        // 根据选择的实体类型生成属性字段
+        function generateEntityProperties() {
+            const entityType = document.getElementById('entityTypeSelect').value;
+            const container = document.getElementById('entityPropertiesContainer');
+            
+            if (!entityType) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const properties = entityPropertiesConfig[entityType];
+            if (!properties) {
+                container.innerHTML = '<p>该实体类型没有预定义属性</p>';
+                return;
+            }
+
+            let html = '';
+            properties.forEach(prop => {
+                html += `
+                    <div class="form-group">
+                        <label for="${prop.name}">${prop.label}${prop.required ? ' *' : ''}:</label>
+                        <input type="${prop.type}" id="${prop.name}" name="${prop.name}" ${prop.required ? 'required' : ''}>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 添加关系字段
+        function addRelationshipField() {
+            const container = document.getElementById('relationshipsContainer');
+            const index = currentRelationshipIndex++;
+            
+            // 获取所有现有实体的选项
+            let entityOptions = '<option value="">请选择实体</option>';
+            for (const type in entitiesData) {
+                if (entitiesData.hasOwnProperty(type)) {
+                    entitiesData[type].forEach(entity => {
+                        entityOptions += `<option value="${entity.id}" data-name="${entity.name}" data-type="${type}">${entity.name} (${type})</option>`;
+                    });
+                }
+            }
+
+            const relationshipHtml = `
+                <div class="relationship-field" id="relationship-${index}">
+                    <select id="relationName-${index}" name="relationName-${index}">
+                        <option value="">关系类型</option>
+                        <option value="治疗药物">治疗药物</option>
+                        <option value="研究领域">研究领域</option>
+                        <option value="研究主题">研究主题</option>
+                        <option value="作者">作者</option>
+                        <option value="生产企业">生产企业</option>
+                        <option value="所属机构">所属机构</option>
+                    </select>
+                    
+                    <select id="relationEntity-${index}" name="relationEntity-${index}" 
+                            class="searchable-select" 
+                            placeholder="搜索实体...">
+                        ${entityOptions}
+                    </select>
+                    
+                    <button type="button" onclick="removeRelationshipField(${index})">删除</button>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', relationshipHtml);
+        }
+
+        // 删除关系字段
+        function removeRelationshipField(index) {
+            const field = document.getElementById(`relationship-${index}`);
+            if (field) {
+                field.remove();
+            }
+        }
+        
+        // 过滤实体选项
+
+
+        // 保存新实体
+        function saveNewEntity() {
+            const form = document.getElementById('addNodeForm');
+            const entityType = document.getElementById('entityTypeSelect').value;
+            
+            if (!entityType) {
+                alert('请选择实体类型');
+                return;
+            }
+
+            // 获取实体属性
+            const properties = entityPropertiesConfig[entityType];
+            const newEntity = { type: entityType };
+            
+            // 收集基本属性
+            properties.forEach(prop => {
+                const value = document.getElementById(prop.name).value;
+                if (value) {
+                    newEntity[prop.name] = value;
+                }
+            });
+
+            // 验证必填字段
+            const requiredProps = properties.filter(prop => prop.required);
+            for (const prop of requiredProps) {
+                if (!newEntity[prop.name]) {
+                    alert(`请填写${prop.label}`);
+                    return;
+                }
+            }
+
+            // 生成唯一ID
+            const idPrefix = entityType.charAt(0);
+            const entitiesOfType = entitiesData[entityType] || [];
+            const newId = `${idPrefix}${entitiesOfType.length + 1}`;
+            newEntity.id = newId;
+
+            // 收集关系
+            const relationships = [];
+            for (let i = 0; i < currentRelationshipIndex; i++) {
+                const relationName = document.getElementById(`relationName-${i}`)?.value;
+                const relationEntityId = document.getElementById(`relationEntity-${i}`)?.value;
+                
+                if (relationName && relationEntityId) {
+                    relationships.push({
+                        source: newId,
+                        target: relationEntityId,
+                        name: relationName
+                    });
+                }
+            }
+
+            // 确保entitiesData是对象结构
+            if (typeof entitiesData !== 'object' || entitiesData === null) {
+                console.error('entitiesData不是有效的对象结构，重置为默认值');
+                entitiesData = {};
+            }
+            
+            // 将新实体添加到数据中
+            if (!entitiesData[entityType]) {
+                entitiesData[entityType] = [];
+            }
+            entitiesData[entityType].push(newEntity);
+
+            // 添加关系
+            relationships.forEach(rel => {
+                relationshipsData.push(rel);
+            });
+
+            // 调试：检查数据结构
+
+            
+            // 统计每种实体类型的数量
+            for (const type in entitiesData) {
+                if (entitiesData.hasOwnProperty(type)) {
+        
+                }
+            }
+            
+
+            
+            // 重新构建完整的图表数据
+            const graphData = buildGraphData();
+            
+            // 调试：检查构建的图表数据
+
+            
+            // 检查图表是否存在
+            if (!chart) {
+    
+                return;
+            }
+            
+            // 使用setOption更新数据，采用完全替换的方式确保数据正确
+            try {
+                // 获取当前图表配置
+                const currentOption = chart.getOption();
+                
+                // 仅替换系列数据，保留其他配置
+                const newOption = {
+                    ...currentOption,
+                    series: [{
+                        ...currentOption.series[0],
+                        data: graphData.nodes,
+                        links: graphData.links,
+                        // 确保力导向布局保持活跃
+                        layout: 'force',
+                        force: {
+                            repulsion: 800,
+                            gravity: 0.1,
+                            edgeLength: [50, 150],
+                            layoutAnimation: true
+                        }
+                    }]
+                };
+                
+                // 使用true参数确保完全替换旧配置
+                chart.setOption(newOption, true);
+                
+    
+            } catch (error) {
+    
+                
+                // 如果完全替换也失败，尝试重新初始化图表
+                try {
+        
+                    const graphCanvas = document.getElementById('graphCanvas');
+                    if (graphCanvas) {
+                        chart = echarts.init(graphCanvas);
+                        const newOption = createChartOption();
+                        chart.setOption(newOption);
+            
+                    }
+                } catch (reinitError) {
+        
+                }
+            }
+            
+            // 调试：检查图表更新后的状态
+            try {
+                const currentOption = chart.getOption();
+    
+    
+    
+            } catch (error) {
+    
+            }
+
+
+            // 更新统计信息
+            updateStats();
+
+            // 关闭弹窗
+            closeAddNodePopup();
+
+            alert('实体添加成功！');
+        }
+        
+        // 移除点击其他区域关闭弹窗的功能，现在只能通过点击"关闭属性"按钮关闭
+        
+        // 实现实体搜索功能
+        function initSearchFunction() {
+            const searchInput = document.getElementById('entitySearchInput');
+            const searchBtn = document.getElementById('entitySearchBtn');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const searchResults = document.getElementById('search-results');
+            // 获取搜索容器元素
+            const searchContainer = document.getElementById('search-container') || document.querySelector('.search-box');
+            
+            // 添加空值检查
+            if (!searchContainer) {
+                console.warn('搜索容器未找到，跳过搜索区域点击事件监听');
+            }
+            
+            // 添加空值检查
+            if (!searchInput || !searchBtn || !clearSearchBtn || !searchResults) {
+                console.warn('搜索元素未找到，跳过搜索功能初始化');
+                return;
+            }
+
+            // 更新清空按钮显示状态
+            function updateClearButton() {
+                clearSearchBtn.style.display = searchInput.value.trim() ? 'flex' : 'none';
+            }
+
+            // 高亮匹配的关键词
+            function highlightKeyword(text, keyword) {
+                if (!keyword) return text;
+                const regex = new RegExp(`(${keyword})`, 'gi');
+                return text.replace(regex, '<span style="color: #667eea; font-weight: bold;">$1</span>');
+            }
+
+            // 执行搜索
+            function performSearch() {
+                const searchText = searchInput.value.trim();
+                if (!searchText) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+
+                // 清除之前的高亮
+                chart.dispatchAction({
+                    type: 'downplay',
+                    seriesIndex: 0
+                });
+
+                // 查找匹配的实体（模糊搜索）
+                const matchedEntities = [];
+                const graphData = buildGraphData();
+                
+                // 使用模糊搜索算法（不区分大小写）
+                const searchLower = searchText.toLowerCase();
+                graphData.nodes.forEach(node => {
+                    if (node.name.toLowerCase().includes(searchLower)) {
+                        matchedEntities.push(node);
+                    }
+                });
+
+                // 显示搜索结果
+                displaySearchResults(matchedEntities, searchText);
+
+                // 高亮匹配的实体
+                if (matchedEntities.length > 0) {
+                    chart.dispatchAction({
+                        type: 'highlight',
+                        seriesIndex: 0,
+                        dataIndex: matchedEntities.map(node => graphData.nodes.indexOf(node))
+                    });
+                }
+            }
+
+            // 实体类型中文映射
+            const entityTypeMap = {
+                disease: '疾病',
+                drug: '药品',
+                expert: '专家',
+                paper: '论文',
+                company: '公司'
+            };
+
+            // 显示搜索结果
+            function displaySearchResults(entities, searchText) {
+                if (entities.length === 0) {
+                    searchResults.innerHTML = '<div>无匹配结果</div>';
+                    searchResults.style.display = 'block';
+                    return;
+                }
+
+                searchResults.innerHTML = entities.map(entity => {
+                    const highlightedName = highlightKeyword(entity.name, searchText);
+                    const entityType = entityTypeMap[entity.type] || entity.type;
+                    return `<div data-node-id="${entity.id}">${highlightedName} (<span style="color: #96ceb4;">${entityType}</span>)</div>`;
+                }).join('');
+
+                searchResults.style.display = 'block';
+
+                // 添加结果点击事件
+                searchResults.querySelectorAll('div').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const nodeId = item.getAttribute('data-node-id');
+                        const graphData = buildGraphData();
+                        const selectedNode = graphData.nodes.find(node => node.id === nodeId);
+                        
+                        if (selectedNode) {
+                            // 触发节点点击事件
+                            chart.dispatchAction({
+                                type: 'click',
+                                seriesIndex: 0,
+                                dataIndex: graphData.nodes.indexOf(selectedNode)
+                            });
+                            
+                            // 显示实体信息
+                            showEntityInfo(selectedNode.id);
+                            
+                            // 关闭搜索结果
+                            searchResults.style.display = 'none';
+                            
+                            // 清空输入并更新按钮状态
+                            searchInput.value = '';
+                            updateClearButton();
+                        }
+                    });
+                });
+            }
+
+            // 清空搜索
+            function clearSearch() {
+                searchInput.value = '';
+                searchResults.style.display = 'none';
+                updateClearButton();
+                
+                // 清除高亮
+                chart.dispatchAction({
+                    type: 'downplay',
+                    seriesIndex: 0
+                });
+                
+                searchInput.focus();
+            }
+
+            // 点击搜索按钮
+            searchBtn.addEventListener('click', performSearch);
+
+            // 按下回车键
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
+            // 输入事件 - 实时更新清空按钮状态
+            searchInput.addEventListener('input', () => {
+                updateClearButton();
+                const searchText = searchInput.value.trim();
+                if (searchText) {
+                    performSearch(); // 实时搜索
+                } else {
+                    searchResults.style.display = 'none';
+                    // 清除高亮
+                    chart.dispatchAction({
+                        type: 'downplay',
+                        seriesIndex: 0
+                    });
+                }
+            });
+
+            // 清空按钮点击事件
+            clearSearchBtn.addEventListener('click', clearSearch);
+
+            // 点击页面其他区域关闭搜索结果
+            if (searchContainer) {
+                document.addEventListener('click', (e) => {
+                    if (!searchContainer.contains(e.target) && !searchResults.contains(e.target)) {
+                        searchResults.style.display = 'none';
+                    }
+                });
+            }
+
+            // 初始化清空按钮状态
+            updateClearButton();
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            document.getElementById('diseaseCount').textContent = entitiesData.disease.length;
+            document.getElementById('drugCount').textContent = entitiesData.drug.length;
+            document.getElementById('expertCount').textContent = entitiesData.expert.length;
+            document.getElementById('paperCount').textContent = entitiesData.paper.length;
+            document.getElementById('companyCount').textContent = entitiesData.company.length;
+            
+            const totalEntities = 
+                entitiesData.disease.length + 
+                entitiesData.drug.length + 
+                entitiesData.expert.length + 
+                entitiesData.paper.length + 
+                entitiesData.company.length;
+            
+            document.getElementById('totalEntities').textContent = totalEntities;
+            document.getElementById('totalRelationships').textContent = relationshipsData.length;
+            
+            // 统计不同关系类型的数量
+            const relationshipCounts = {
+                '治疗药物': 0,
+                '研究领域': 0,
+                '研究主题': 0,
+                '生产企业': 0,
+                '作者': 0
+            };
+            
+            relationshipsData.forEach(relationship => {
+                if (relationshipCounts.hasOwnProperty(relationship.name)) {
+                    relationshipCounts[relationship.name]++;
+                }
+            });
+            
+            // 更新关系类型统计信息
+            document.getElementById('treatmentCount').textContent = relationshipCounts['治疗药物'];
+            document.getElementById('researchFieldCount').textContent = relationshipCounts['研究领域'];
+            document.getElementById('researchTopicCount').textContent = relationshipCounts['研究主题'];
+            document.getElementById('manufacturerCount').textContent = relationshipCounts['生产企业'];
+            document.getElementById('authorCount').textContent = relationshipCounts['作者'];
+        }
+        
+        // 更新布局
+        function updateLayout(layoutType) {
+            if (!chart) return;
+            
+            // 获取当前图表配置，确保我们保留所有原始配置
+            const currentOption = chart.getOption();
+            const graphData = buildGraphData();
+            
+            // 重置节点位置（移除固定坐标）
+            const resetNodes = graphData.nodes.map(node => {
+                const { x, y, ...rest } = node;
+                return rest;
+            });
+            
+            // 只更新series中的布局相关配置
+            const seriesUpdate = {
+                data: resetNodes,
+                links: graphData.links
+            };
+            
+            // 根据选择的布局类型设置不同的布局配置
+            switch (layoutType) {
+                case 'force':
+                    seriesUpdate.layout = 'force';
+                    seriesUpdate.force = {
+                        repulsion: 800,
+                        gravity: 0.1,
+                        edgeLength: [50, 150],
+                        layoutAnimation: true
+                    };
+                    break;
+                case 'circular':
+                    // 自定义环形布局计算
+                    const circularNodes = [...resetNodes];
+                    const radius = 250;
+                    const nodeCount = circularNodes.length;
+                    
+                    circularNodes.forEach((node, index) => {
+                        const angle = (index / nodeCount) * Math.PI * 2;
+                        node.x = Math.cos(angle) * radius;
+                        node.y = Math.sin(angle) * radius;
+                    });
+                    
+                    seriesUpdate.layout = 'none'; // 使用自定义位置
+                    seriesUpdate.data = circularNodes;
+                    break;
+                case 'grid':
+                    // 自定义网格布局计算
+                    const gridNodes = [...resetNodes];
+                    const gridNodeCount = gridNodes.length;
+                    const cols = Math.ceil(Math.sqrt(gridNodeCount));
+                    const rows = Math.ceil(gridNodeCount / cols);
+                    const cellWidth = 100;
+                    const cellHeight = 80;
+                    const startX = -((cols - 1) * cellWidth) / 2;
+                    const startY = -((rows - 1) * cellHeight) / 2;
+                    
+                    gridNodes.forEach((node, index) => {
+                        const row = Math.floor(index / cols);
+                        const col = index % cols;
+                        node.x = startX + col * cellWidth;
+                        node.y = startY + row * cellHeight;
+                    });
+                    
+                    seriesUpdate.layout = 'none'; // 使用自定义位置
+                    seriesUpdate.data = gridNodes;
+                    break;
+                case 'tree':
+                    // 自定义树形布局计算（简单实现：以中心节点为根，其他节点围绕它）
+                    const treeNodes = [...resetNodes];
+                    const treeRootId = entitiesData.disease && entitiesData.disease.length > 0 ? entitiesData.disease[0].id : treeNodes[0].id;
+                    const rootIndex = treeNodes.findIndex(node => node.id === treeRootId);
+                    
+                    // 将根节点移到数组开头
+                    if (rootIndex > 0) {
+                        const [rootNode] = treeNodes.splice(rootIndex, 1);
+                        treeNodes.unshift(rootNode);
+                    }
+                    
+                    // 中心节点
+                    treeNodes[0].x = 0;
+                    treeNodes[0].y = 0;
+                    
+                    // 子节点围绕根节点分布
+                    const childRadius = 200;
+                    treeNodes.slice(1).forEach((node, index) => {
+                        const angle = (index / (treeNodes.length - 1)) * Math.PI * 2;
+                        node.x = Math.cos(angle) * childRadius;
+                        node.y = Math.sin(angle) * childRadius;
+                    });
+                    
+                    seriesUpdate.layout = 'none'; // 使用自定义位置
+                    seriesUpdate.data = treeNodes;
+                    break;
+                case 'radial':
+                    // 自定义放射布局计算
+                    const radialNodes = [...resetNodes];
+                    const maxRadius = 300;
+                    const minRadius = 50;
+                    const radialNodeCount = radialNodes.length;
+                    
+                    radialNodes.forEach((node, index) => {
+                        if (index === 0) {
+                            // 中心节点
+                            node.x = 0;
+                            node.y = 0;
+                        } else {
+                            const radius = minRadius + ((maxRadius - minRadius) * (index - 1)) / (radialNodeCount - 1);
+                            const angle = (index - 1) / (radialNodeCount - 1) * Math.PI * 2;
+                            node.x = Math.cos(angle) * radius;
+                            node.y = Math.sin(angle) * radius;
+                        }
+                    });
+                    
+                    seriesUpdate.layout = 'none'; // 使用自定义位置
+                    seriesUpdate.data = radialNodes;
+                    break;
+                case 'cluster':
+                    seriesUpdate.layout = 'force';
+                    seriesUpdate.force = {
+                        repulsion: 1000,
+                        gravity: 0.1,
+                        edgeLength: [50, 120],
+                        layoutAnimation: true
+                    };
+                    break;
+            }
+            
+            // 更新图表配置，只修改series中的布局相关属性，保留其他配置
+            chart.setOption({
+                series: [seriesUpdate]
+            });
+            
+            // 移除之前可能添加的forceSimulationEnd事件监听
+            chart.off('forceSimulationEnd');
+            
+            // 确保图形中心保持在中间位置
+            if (layoutType === 'force' || layoutType === 'cluster') {
+                // 对于力导布局，监听布局完成事件
+                chart.on('forceSimulationEnd', function() {
+                    console.log('力导布局模拟完成');
+                    // 力导布局会自动将图形中心保持在画布中央
+                });
+            } else {
+                // 对于非力导布局，我们已经在计算节点位置时确保了图形中心在中间
+                console.log('非力导布局更新完成');
+            }
+        }
+        
+        // 统计信息将在数据加载完成后初始化
+        
+        // 布局选择下拉菜单事件监听
+        document.addEventListener('DOMContentLoaded', function() {
+            const layoutSelect = document.getElementById('layoutSelect');
+            if (layoutSelect) {
+                layoutSelect.addEventListener('change', function() {
+                    updateLayout(this.value);
+                });
+            }
+        });
+        
+        // 窗口大小变化时重新调整图表大小
+        window.addEventListener('resize', function() {
+            if (chart) {
+                chart.resize();
+            }
+            if (overviewChart) {
+                overviewChart.resize();
+            }
+        });
+        
+        // 全局变量用于存储主画布的可视区域信息
+        let mainChartRect = null;
+        
+        // 更新鹰眼图，使其跟随主画布视图
+        function updateOverviewMap() {
+            if (!chart || !overviewChart) return;
+            
+            try {
+                // 获取主画布的视图信息
+                const mainOption = chart.getOption();
+                const mainSeries = mainOption.series[0];
+                
+                if (!mainSeries || !mainSeries.data || mainSeries.data.length === 0) {
+                    console.log('主画布无数据，跳过鹰眼图更新');
+                    return;
+                }
+                
+                // 获取主画布的尺寸
+                const mainWidth = chart.getWidth();
+                const mainHeight = chart.getHeight();
+                
+                // 获取主画布的缩放和平移信息
+                // 使用正确的ECharts API获取视图信息
+                const zr = chart.getZr();
+                
+                // 使用兼容的方式获取缩放和平移信息
+                let zoom = 1;
+                let pan = { x: 0, y: 0 };
+                
+                try {
+                    // 尝试使用不同版本的API
+                    if (zr.zoom != null) {
+                        // 旧版本API
+                        zoom = zr.zoom;
+                        pan = zr.pan || { x: 0, y: 0 };
+                    } else if (typeof zr.getZoom === 'function' && typeof zr.getPan === 'function') {
+                        // 新版本API
+                        zoom = zr.getZoom();
+                        pan = zr.getPan();
+                    } else {
+                        // 无法获取缩放和平移信息，使用默认值
+                        console.warn('无法获取主画布缩放和平移信息，使用默认值');
+                    }
+                } catch (e) {
+                    console.warn('获取主画布缩放和平移信息失败:', e);
+                }
+                
+                // 计算主画布可视区域在数据坐标系中的位置和大小
+                const x = -pan.x / zoom;
+                const y = -pan.y / zoom;
+                const width = mainWidth / zoom;
+                const height = mainHeight / zoom;
+                
+                // 更新主画布矩形信息
+                mainChartRect = { x, y, width, height };
+                
+                // 更新鹰眼图上的红色矩形框
+                overviewChart.setOption({
+                    series: [
+                        {}, // 跳过第一个系列（图谱）
+                        {
+                            data: [[x, y, width, height]]
+                        }
+                    ]
+                });
+                
+            } catch (error) {
+                console.error('更新鹰眼图失败:', error);
+            }
+        }
+        
+        // 监听主画布的视图变化事件
+        function setupMainChartListeners() {
+            if (!chart) return;
+            
+            // 监听平移事件
+            chart.getZr().on('mousemove', function(event) {
+                if (event.event && event.event.button === 2) {
+                    // 右键拖动时更新鹰眼图
+                    updateOverviewMap();
+                }
+            });
+            
+            // 监听缩放事件
+            chart.on('zoom', function() {
+                updateOverviewMap();
+            });
+            
+            // 监听图表渲染完成事件
+            chart.on('rendered', function() {
+                updateOverviewMap();
+            });
+        }
+        
+        // 定时更新鹰眼图
+        setInterval(updateOverviewMap, 100);
+        
+        // 在initChart函数中添加对setupMainChartListeners的调用
+
+        // 为带有searchable-select类的下拉框添加搜索功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有现有的searchable-select元素添加搜索功能
+            initializeSearchableSelects();
+
+            // 为动态添加的searchable-select元素添加搜索功能
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // 检查添加的节点是否是searchable-select元素
+                            if (node.classList.contains('searchable-select')) {
+                                convertToSearchableSelect(node);
+                            }
+                            // 检查添加的节点是否包含searchable-select元素
+                            const searchableSelects = node.querySelectorAll('.searchable-select');
+                            searchableSelects.forEach(function(select) {
+                                convertToSearchableSelect(select);
+                            });
+                        }
+                    });
+                });
+            });
+
+            // 配置观察者
+            const observerConfig = {
+                childList: true,
+                subtree: true
+            };
+
+            // 启动观察
+            observer.observe(document.body, observerConfig);
+
+            // 初始化所有searchable-select元素
+            function initializeSearchableSelects() {
+                const searchableSelects = document.querySelectorAll('.searchable-select');
+                searchableSelects.forEach(function(select) {
+                    convertToSearchableSelect(select);
+                });
+            }
+
+            // 将普通select转换为可搜索的下拉选择器
+            function convertToSearchableSelect(selectElement) {
+                // 如果已经转换过，则不再重复转换
+                if (selectElement.classList.contains('converted-searchable-select')) {
+                    return;
+                }
+
+                // 添加标记，表示已经转换
+                selectElement.classList.add('converted-searchable-select');
+
+                // 隐藏原始select元素，但保持其功能性
+                selectElement.style.display = 'none';
+
+                // 创建自定义组件容器
+                const container = document.createElement('div');
+                container.className = 'custom-select-container';
+                container.style.cssText = `
+                    position: relative;
+                    width: 100%;
+                    box-sizing: border-box;
+                `;
+
+                // 创建输入框
+                const inputElement = document.createElement('input');
+                inputElement.type = 'text';
+                inputElement.className = 'custom-select-input';
+                inputElement.placeholder = selectElement.placeholder || '请选择或输入...';
+                
+                // 设置输入框样式
+                inputElement.style.cssText = `
+                    width: 100%;
+                    padding: 8px;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    background-color: #333;
+                    color: white;
+                    box-sizing: border-box;
+                    cursor: pointer;
+                `;
+
+                // 创建下拉列表容器
+                const dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'custom-select-dropdown';
+                dropdownContainer.style.cssText = `
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    border: 1px solid #ccc;
+                    border-radius: 0 0 4px 4px;
+                    background-color: #333;
+                    display: none;
+                    z-index: 1000;
+                `;
+
+                // 从原始select中复制选项到下拉列表
+                const options = selectElement.querySelectorAll('option');
+                options.forEach(function(option) {
+                    const dropdownItem = document.createElement('div');
+                    dropdownItem.className = 'custom-select-option';
+                    dropdownItem.textContent = option.textContent;
+                    dropdownItem.dataset.value = option.value;
+                    dropdownItem.style.cssText = `
+                        padding: 8px;
+                        cursor: pointer;
+                        color: white;
+                    `;
+
+                    // 添加选中状态样式
+                    if (option.selected) {
+                        inputElement.value = option.textContent;
+                        dropdownItem.style.backgroundColor = '#4a4a4a';
+                    }
+
+                    // 鼠标悬停效果
+                    dropdownItem.addEventListener('mouseenter', function() {
+                        dropdownItem.style.backgroundColor = '#4a4a4a';
+                    });
+
+                    dropdownItem.addEventListener('mouseleave', function() {
+                        if (dropdownItem.dataset.value !== selectElement.value) {
+                            dropdownItem.style.backgroundColor = 'transparent';
+                        }
+                    });
+
+                    // 点击选项事件
+                    dropdownItem.addEventListener('click', function() {
+                        // 更新输入框的值
+                        inputElement.value = dropdownItem.textContent;
+                        
+                        // 更新原始select的值
+                        selectElement.value = dropdownItem.dataset.value;
+                        
+                        // 触发原始select的change事件
+                        const changeEvent = new Event('change', { bubbles: true });
+                        selectElement.dispatchEvent(changeEvent);
+                        
+                        // 隐藏下拉列表
+                        dropdownContainer.style.display = 'none';
+                    });
+
+                    dropdownContainer.appendChild(dropdownItem);
+                });
+
+                // 将元素添加到容器中
+                container.appendChild(inputElement);
+                container.appendChild(dropdownContainer);
+
+                // 将容器插入到原始select之前
+                selectElement.parentNode.insertBefore(container, selectElement);
+
+                // 点击输入框切换下拉列表显示状态
+                inputElement.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dropdownContainer.style.display = dropdownContainer.style.display === 'block' ? 'none' : 'block';
+                });
+
+                // 点击页面其他地方隐藏下拉列表
+                document.addEventListener('click', function() {
+                    dropdownContainer.style.display = 'none';
+                });
+
+                // 监听输入框的输入事件，实时过滤下拉列表
+                inputElement.addEventListener('input', function() {
+                    const searchTerm = inputElement.value.toLowerCase();
+                    const dropdownItems = dropdownContainer.querySelectorAll('.custom-select-option');
+                    let hasMatch = false;
+
+                    dropdownItems.forEach(function(item) {
+                        const itemText = item.textContent.toLowerCase();
+                        if (itemText.includes(searchTerm)) {
+                            item.style.display = 'block';
+                            hasMatch = true;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+
+                    // 如果有匹配项，显示下拉列表
+                    if (hasMatch) {
+                        dropdownContainer.style.display = 'block';
+                    } else {
+                        dropdownContainer.style.display = 'none';
+                    }
+                });
+            }
+        });
+        </script>
+    </body>
+</html>

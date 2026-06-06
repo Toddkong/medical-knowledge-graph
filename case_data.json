@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "disease": [
+      { "id": "d1", "name": "阿尔茨海默病", "type": "disease", "x": 200, "y": 100 },
+      { "id": "d2", "name": "帕金森病", "type": "disease", "x": 500, "y": 100 },
+      { "id": "d3", "name": "脑卒中", "type": "disease", "x": 800, "y": 100 },
+      { "id": "d4", "name": "肺癌", "type": "disease", "x": 100, "y": 350 },
+      { "id": "d5", "name": "乳腺癌", "type": "disease", "x": 300, "y": 350 },
+      { "id": "d6", "name": "肝癌", "type": "disease", "x": 500, "y": 350 },
+      { "id": "d7", "name": "胃癌", "type": "disease", "x": 700, "y": 350 },
+      { "id": "d8", "name": "糖尿病", "type": "disease", "x": 900, "y": 350 },
+      { "id": "d9", "name": "高血压", "type": "disease", "x": 200, "y": 600 },
+      { "id": "d10", "name": "冠心病", "type": "disease", "x": 600, "y": 600 }
+    ],
+    "drug": [
+      { "id": "dr1", "name": "多奈哌齐", "type": "drug", "x": 300, "y": 200 },
+      { "id": "dr2", "name": "美金刚", "type": "drug", "x": 400, "y": 200 },
+      { "id": "dr3", "name": "左旋多巴", "type": "drug", "x": 600, "y": 200 },
+      { "id": "dr4", "name": "司来吉兰", "type": "drug", "x": 700, "y": 200 },
+      { "id": "dr5", "name": "阿司匹林", "type": "drug", "x": 900, "y": 200 },
+      { "id": "dr6", "name": "阿托伐他汀", "type": "drug", "x": 200, "y": 450 },
+      { "id": "dr7", "name": "二甲双胍", "type": "drug", "x": 400, "y": 450 },
+      { "id": "dr8", "name": "胰岛素", "type": "drug", "x": 600, "y": 450 },
+      { "id": "dr9", "name": "厄贝沙坦", "type": "drug", "x": 800, "y": 450 },
+      { "id": "dr10", "name": "硝酸甘油", "type": "drug", "x": 1000, "y": 450 }
+    ],
+    "expert": [
+      { "id": "e1", "name": "李教授", "type": "expert", "x": 100, "y": 50 },
+      { "id": "e2", "name": "王医生", "type": "expert", "x": 400, "y": 50 },
+      { "id": "e3", "name": "张博士", "type": "expert", "x": 700, "y": 50 },
+      { "id": "e4", "name": "刘主任", "type": "expert", "x": 1000, "y": 50 },
+      { "id": "e5", "name": "赵院长", "type": "expert", "x": 100, "y": 250 },
+      { "id": "e6", "name": "陈教授", "type": "expert", "x": 400, "y": 250 },
+      { "id": "e7", "name": "周医生", "type": "expert", "x": 700, "y": 550 },
+      { "id": "e8", "name": "吴博士", "type": "expert", "x": 1000, "y": 550 },
+      { "id": "e9", "name": "郑主任", "type": "expert", "x": 300, "y": 550 },
+      { "id": "e10", "name": "孙院长", "type": "expert", "x": 600, "y": 750 }
+    ],
+    "paper": [
+      { "id": "p1", "name": "阿尔茨海默病最新研究", "type": "paper", "x": 100, "y": 150 },
+      { "id": "p2", "name": "帕金森病治疗进展", "type": "paper", "x": 500, "y": 150 },
+      { "id": "p3", "name": "脑卒中预防指南", "type": "paper", "x": 900, "y": 150 },
+      { "id": "p4", "name": "脑卒中康复研究", "type": "paper", "x": 700, "y": 250 },
+      { "id": "p5", "name": "阿尔茨海默病机制", "type": "paper", "x": 900, "y": 250 },
+      { "id": "p6", "name": "帕金森病治疗", "type": "paper", "x": 200, "y": 550 },
+      { "id": "p7", "name": "肺癌早期诊断", "type": "paper", "x": 400, "y": 550 },
+      { "id": "p8", "name": "乳腺癌治疗研究", "type": "paper", "x": 600, "y": 550 },
+      { "id": "p9", "name": "肝癌分子机制", "type": "paper", "x": 800, "y": 550 },
+      { "id": "p10", "name": "胃癌筛查技术", "type": "paper", "x": 1000, "y": 550 }
+    ],
+    "company": [
+      { "id": "c1", "name": "辉瑞制药", "type": "company", "x": 100, "y": 500 },
+      { "id": "c2", "name": "罗氏制药", "type": "company", "x": 300, "y": 450 },
+      { "id": "c3", "name": "诺华制药", "type": "company", "x": 500, "y": 450 },
+      { "id": "c4", "name": "默沙东制药", "type": "company", "x": 700, "y": 450 },
+      { "id": "c5", "name": "阿斯利康", "type": "company", "x": 900, "y": 450 },
+      { "id": "c6", "name": "强生公司", "type": "company", "x": 200, "y": 650 },
+      { "id": "c7", "name": "赛诺菲", "type": "company", "x": 400, "y": 650 },
+      { "id": "c8", "name": "葛兰素史克", "type": "company", "x": 600, "y": 650 },
+      { "id": "c9", "name": "礼来制药", "type": "company", "x": 800, "y": 650 },
+      { "id": "c10", "name": "百时美施贵宝", "type": "company", "x": 1000, "y": 650 }
+    ]
+  },
+  "relationships": [
+    { "source": "d1", "target": "dr1", "name": "治疗药物" },
+    { "source": "d1", "target": "dr2", "name": "治疗药物" },
+    { "source": "d2", "target": "dr3", "name": "治疗药物" },
+    { "source": "d2", "target": "dr4", "name": "治疗药物" },
+    { "source": "d3", "target": "dr3", "name": "治疗药物" },
+    { "source": "d3", "target": "dr5", "name": "治疗药物" },
+    { "source": "e1", "target": "d1", "name": "研究领域" },
+    { "source": "e2", "target": "d2", "name": "研究领域" },
+    { "source": "e3", "target": "d3", "name": "研究领域" },
+    { "source": "e4", "target": "d4", "name": "研究领域" },
+    { "source": "p1", "target": "d1", "name": "研究主题" },
+    { "source": "p2", "target": "d2", "name": "研究主题" },
+    { "source": "c1", "target": "dr1", "name": "生产企业" },
+    { "source": "c2", "target": "dr2", "name": "生产企业" },
+    { "source": "c3", "target": "dr3", "name": "生产企业" },
+    { "source": "c4", "target": "dr4", "name": "生产企业" },
+    { "source": "e1", "target": "p1", "name": "作者" },
+    { "source": "e2", "target": "p2", "name": "作者" },
+    { "source": "e3", "target": "p3", "name": "作者" },
+    { "source": "e4", "target": "p4", "name": "作者" }
+  ]
+}

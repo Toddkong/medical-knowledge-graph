@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识图谱测试页面</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        /* 基础样式 */
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+        }
+        
+        /* 容器样式 */
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+        
+        /* 顶部工具栏样式 */
+        .top-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #1a1a1a;
+            border-bottom: 1px solid #333;
+            z-index: 100;
+        }
+        
+        /* 中间内容区域样式 */
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* 左侧控制面板样式 */
+        .sidebar {
+            width: 300px;
+            background-color: #1a1a1a;
+            border-right: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 50;
+        }
+        
+        /* 右侧内容区域样式 */
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 图谱画布样式 */
+        #graphCanvas {
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a;
+            z-index: 1;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部工具栏 -->
+        <div class="top-toolbar">
+            <h1 class="text-2xl font-bold">知识图谱测试</h1>
+        </div>
+        
+        <!-- 中间内容区域 -->
+        <div class="content">
+            <!-- 右侧内容区域 -->
+            <div class="main-content">
+                <!-- 图谱画布 -->
+                <div id="graphCanvas"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let chart;
+        let graphData = {
+            nodes: [
+                { id: 1, name: '张三', type: 'person' },
+                { id: 2, name: '李四', type: 'person' },
+                { id: 3, name: '王五', type: 'person' },
+                { id: 4, name: '研究', type: 'topic' },
+                { id: 5, name: '合作', type: 'relationship' }
+            ],
+            links: [
+                { source: 1, target: 2, name: '同事' },
+                { source: 1, target: 3, name: '朋友' },
+                { source: 2, target: 4, name: '研究' },
+                { source: 3, target: 4, name: '研究' },
+                { source: 1, target: 5, name: '参与' },
+                { source: 2, target: 5, name: '参与' },
+                { source: 3, target: 5, name: '参与' }
+            ]
+        };
+        
+        // 页面加载完成后执行
+        window.onload = function() {
+            // 初始化图表
+            initChart();
+        };
+        
+        // 初始化图表
+        function initChart() {
+            // 获取图表容器
+            const graphCanvas = document.getElementById('graphCanvas');
+            
+            // 创建图表实例
+            chart = echarts.init(graphCanvas);
+            console.log('图表实例初始化:', chart);
+            
+            // 创建图表选项
+            const option = {
+                backgroundColor: '#1a1a1a',
+                // 确保图表能响应鼠标事件
+                silent: false,
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        if (params.dataType === 'node') {
+                            return `${params.name}<br>类型: ${params.data.type}`;
+                        } else if (params.dataType === 'edge') {
+                            return `${params.data.name}`;
+                        }
+                    },
+                    backgroundColor: 'rgba(45, 45, 45, 0.9)',
+                    borderColor: '#555',
+                    textStyle: {
+                        color: '#e0e0e0'
+                    }
+                },
+                series: [
+                    {
+                        type: 'graph',
+                        layout: 'force',
+                        symbolSize: 40,
+                        roam: true,
+                        // 确保系列能响应鼠标事件
+                        silent: false,
+                        // 确保节点可点击
+                        clickable: true,
+                        label: {
+                            show: true,
+                            position: 'bottom',
+                            formatter: '{b}',
+                            color: '#e0e0e0',
+                            backgroundColor: 'rgba(45, 45, 45, 0.8)',
+                            borderColor: '#555',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            padding: [4, 8]
+                        },
+                        force: {
+                            repulsion: 800,
+                            gravity: 0.1,
+                            edgeLength: [50, 150],
+                            layoutAnimation: true
+                        },
+                        edgeSymbol: ['none', 'arrow'],
+                        edgeSymbolSize: 10,
+                        edgeLabel: {
+                            show: true,
+                            fontSize: 12,
+                            color: '#aaa',
+                            backgroundColor: 'rgba(45, 45, 45, 0.8)',
+                            borderColor: '#555',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            padding: [4, 8],
+                            formatter: function(params) {
+                                return params.data.name || '无关系名称';
+                            }
+                        },
+                        data: graphData.nodes,
+                        links: graphData.links,
+                        lineStyle: {
+                            opacity: 0.9,
+                            width: 2,
+                            curveness: 0,
+                            color: '#aaa'
+                        },
+                        emphasis: {
+                            focus: 'adjacency',
+                            lineStyle: {
+                                width: 4,
+                                color: '#fff'
+                            },
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowColor: 'rgba(255, 255, 255, 0.3)'
+                            }
+                        },
+                        selected: {
+                            itemStyle: {
+                                color: '#ffd700',
+                                shadowBlur: 15,
+                                shadowColor: 'rgba(255, 215, 0, 0.8)'
+                            },
+                            label: {
+                                color: '#fff',
+                                fontWeight: 'bold',
+                                fontSize: 14
+                            }
+                        },
+                        selectedMode: 'single',
+                        draggable: true
+                    }
+                ]
+            };
+            
+            // 使用配置项和数据显示图表
+            chart.setOption(option);
+            console.log('图表设置选项完成:', option);
+            
+            // 立即绑定图表点击事件
+            chart.on('click', function(params) {
+                console.log('chart.on点击事件触发:', params);
+                if (params.dataType === 'node') {
+                    alert('节点点击事件触发！实体名称：' + params.data.name);
+                    console.log('节点点击事件触发，实体数据:', params.data);
+                    console.log('事件对象:', params);
+                }
+            });
+            
+            // 在图表选项中直接定义事件处理函数
+            chart.setOption({
+                series: [{
+                    onClick: function(params) {
+                        console.log('图表选项中的onclick事件触发:', params);
+                        if (params.dataType === 'node') {
+                            alert('节点点击事件触发！实体名称：' + params.data.name);
+                            console.log('节点点击事件触发，实体数据:', params.data);
+                            console.log('事件对象:', params);
+                        }
+                    }
+                }]
+            });
+            
+            // 确保图表容器的z-index足够高，能够接收点击事件
+            graphCanvas.style.zIndex = '1000';
+            graphCanvas.style.position = 'relative';
+            
+            // 确保图表容器没有被其他元素遮挡
+            console.log('图表容器z-index:', getComputedStyle(graphCanvas).zIndex);
+            console.log('图表容器position:', getComputedStyle(graphCanvas).position);
+            
+            // 自动测试点击事件
+            function autoTestClickEvent() {
+                console.log('=== 开始自动测试点击事件 ===');
+                
+                // 1. 测试直接调用dispatchAction触发点击事件
+                console.log('1. 测试直接调用dispatchAction触发点击事件');
+                chart.dispatchAction({
+                    type: 'click',
+                    dataIndex: 0,
+                    seriesIndex: 0
+                });
+                
+                // 2. 测试通过zrender实例触发点击事件
+                console.log('\n2. 测试通过zrender实例触发点击事件');
+                const zr = chart.getZr();
+                zr.trigger('click', {
+                    offsetX: 200,
+                    offsetY: 200
+                });
+                
+                // 3. 测试通过DOM事件触发点击事件
+                console.log('\n3. 测试通过DOM事件触发点击事件');
+                const rect = graphCanvas.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                // 创建并触发鼠标点击事件
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: rect.left + centerX,
+                    clientY: rect.top + centerY
+                });
+                graphCanvas.dispatchEvent(clickEvent);
+                
+                console.log('=== 自动测试点击事件完成 ===');
+            }
+            
+            // 页面加载完成后2秒执行自动测试
+            setTimeout(autoTestClickEvent, 2000);
+        }
+    </script>
+</body>
+</html>

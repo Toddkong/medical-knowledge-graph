@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototype Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Hide scrollbar for clean look but allow scroll */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 隐藏 iframe 内部滚动条但允许滚动 */
+        iframe::-webkit-scrollbar { display: none; }
+        
+        /* 确保 iframe 自身不显示滚动条 */
+        iframe {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex overflow-hidden text-gray-700 font-sans">
+
+    <!-- LEFT: Sidebar Navigation -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-300" id="sidebar">
+        <!-- Header -->
+        <div class="h-14 flex items-center px-5 border-b border-gray-100 bg-gray-50/50">
+            <i class="fa-solid fa-layer-group text-blue-600 mr-3"></i>
+            <h1 class="font-bold text-gray-800 tracking-tight">原型预览系统</h1>
+        </div>
+
+        <!-- Menu List -->
+        <nav class="flex-1 overflow-y-auto p-3 space-y-4" id="navMenu">
+            <!-- Dynamic Content Here -->
+        </nav>
+
+        <!-- Footer Info -->
+        <div class="p-4 border-t border-gray-100 text-xs text-gray-400 text-center">
+            ©️ 2026
+        </div>
+    </aside>
+
+    <!-- CENTER: Workspace -->
+    <main class="flex-1 flex flex-col min-w-0 bg-gray-100/50">
+        <!-- Toolbar / Breadcrumb -->
+        <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-10">
+            <div class="flex items-center text-sm">
+                <button id="toggleSidebar" class="mr-4 text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div id="breadcrumb" class="flex items-center text-gray-500">
+                    <span class="opacity-50">项目</span>
+                    <i class="fa-solid fa-chevron-right text-[10px] mx-2 opacity-30"></i>
+                    <span class="font-medium text-gray-800">加载中...</span>
+                </div>
+            </div>
+            
+            <!-- View Options (Optional) -->
+            <div class="flex gap-2 text-gray-400 text-sm">
+                <button onclick="toggleInfoPanel()" class="hover:text-gray-600 transition-colors" title="切换页面详情">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+                <span class="w-px h-4 bg-gray-200 mx-1"></span>
+                <span title="手机预览"><i class="fa-solid fa-mobile-screen"></i></span>
+            </div>
+        </header>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 overflow-hidden flex justify-center items-center p-8 relative" id="canvasArea">
+            <!-- Device Frame (Dynamic via JS) -->
+            <div id="deviceContainer" class="relative bg-white overflow-hidden transition-all duration-500 shadow-2xl ring-1 ring-gray-900/5">
+                <!-- Iframe Content -->
+                <iframe id="previewFrame" class="w-full h-full bg-white no-scrollbar" src="about:blank"></iframe>
+            </div>
+            
+            <!-- Watermark / Background Decoration -->
+            <div class="absolute inset-0 -z-10 opacity-[0.03] pointer-events-none flex justify-center items-center">
+                 <i class="fa-solid fa-compass-drafting text-9xl"></i>
+            </div>
+        </div>
+    </main>
+
+    <!-- RIGHT: Info Panel -->
+    <aside class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 shadow-lg z-20 transform transition-all duration-300" id="infoPanel">
+        <div class="h-14 flex items-center justify-between px-5 border-b border-gray-100">
+            <h2 class="font-bold text-gray-800">页面详情</h2>
+            <button onclick="toggleInfoPanel()" class="text-gray-400 hover:text-gray-600 transition-transform duration-300" id="infoPanelToggleBtn">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6" id="infoContent">
+            <div class="text-center text-gray-400 mt-10">
+                <i class="fa-regular fa-file-code text-4xl mb-3 opacity-50"></i>
+                <p>请选择左侧页面查看详情</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Config Loader (Anti-cache) -->
+    <script>
+        document.write('<script src="config.js?v=' + new Date().getTime() + '"><\/script>');
+    </script>
+
+    <!-- Application Logic -->
+    <script>
+        // State
+        let currentModuleId = null;
+        let currentPageId = null;
+
+        // DOM Elements
+        const els = {
+            menu: document.getElementById('navMenu'),
+            breadcrumb: document.getElementById('breadcrumb'),
+            iframe: document.getElementById('previewFrame'),
+            info: document.getElementById('infoContent'),
+            sidebar: document.getElementById('sidebar'),
+            infoPanel: document.getElementById('infoPanel')
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof prototypeConfig === 'undefined') {
+                alert('Error: config.js not found or invalid.');
+                return;
+            }
+            renderSidebar();
+            updateDeviceFrame();
+            autoSelectFirstPage();
+        });
+
+        // Update Device Frame based on Type (Page/Module level or Project level)
+        function updateDeviceFrame(specificType) {
+            const container = document.getElementById('deviceContainer');
+            
+            // Priority: specificType > project.type > 'mobile'
+            let type = specificType;
+            if (!type && prototypeConfig.project && prototypeConfig.project.type) {
+                type = prototypeConfig.project.type;
+            }
+            type = type || 'mobile';
+
+            if (type === 'web' || type === 'admin' || type === 'pc') {
+                // Web/PC Mode: Full width/height within container with some padding
+                // Using w-full h-full might be too big if p-8 is set on parent, but let's trust the parent flex layout.
+                // We'll make it look like a browser window
+                container.className = 'relative w-full h-full max-w-[1440px] bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden ring-1 ring-gray-900/5 transition-all duration-500';
+            } else {
+                // Mobile Mode: Phone frame
+                container.className = 'relative w-[400px] h-[850px] bg-white rounded-[40px] shadow-2xl border-[8px] border-gray-800 overflow-hidden ring-1 ring-gray-900/5 transition-all duration-500';
+            }
+        }
+
+        // Toggle Sidebar
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            els.sidebar.classList.toggle('-ml-64');
+        });
+
+        function toggleInfoPanel() {
+            const panel = els.infoPanel;
+            const btn = document.getElementById('infoPanelToggleBtn');
+            
+            // Use width to collapse
+            if (panel.style.width === '0px' || panel.classList.contains('w-0')) {
+                // Expand
+                panel.style.width = '320px';
+                panel.classList.remove('w-0');
+                panel.classList.remove('border-none');
+                if(btn) btn.style.transform = 'rotate(0deg)';
+            } else {
+                // Collapse
+                panel.style.width = '0px';
+                panel.classList.add('w-0');
+                panel.classList.add('border-none'); // Remove border when collapsed
+                if(btn) btn.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Render Sidebar Menu
+        function renderSidebar() {
+            els.menu.innerHTML = '';
+            
+            prototypeConfig.modules.forEach(module => {
+                // Module Group
+                const group = document.createElement('div');
+                group.className = 'mb-2';
+                
+                // Title
+                const title = document.createElement('div');
+                title.className = 'px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2';
+                title.innerHTML = `<i class="fa-solid ${module.icon || 'fa-folder'}"></i> ${module.title}`;
+                group.appendChild(title);
+                
+                // Pages
+                const list = document.createElement('div');
+                list.className = 'space-y-1';
+                
+                module.pages.forEach(page => {
+                    const btn = document.createElement('button');
+                    btn.className = `w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group ${
+                        page.status === 'pending' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 text-gray-600'
+                    }`;
+                    btn.dataset.moduleId = module.id;
+                    btn.dataset.pageId = page.id;
+                    
+                    // Status Indicator
+                    let statusDot = '';
+                    if (page.status === 'finished') statusDot = '<span class="w-2 h-2 rounded-full bg-green-400"></span>';
+                    else if (page.status === 'dev') statusDot = '<span class="w-2 h-2 rounded-full bg-yellow-400"></span>';
+                    else statusDot = '<span class="w-2 h-2 rounded-full bg-gray-300"></span>';
+
+                    btn.innerHTML = `
+                        <span class="truncate font-medium">${page.title}</span>
+                        ${statusDot}
+                    `;
+                    
+                    if (page.status !== 'pending') {
+                        btn.onclick = () => selectPage(module, page, btn);
+                    }
+                    
+                    list.appendChild(btn);
+                });
+                
+                group.appendChild(list);
+                els.menu.appendChild(group);
+            });
+        }
+
+        // Select Page Logic
+        function selectPage(module, page, btnElement) {
+            // Update UI Active State
+            document.querySelectorAll('#navMenu button').forEach(b => {
+                b.className = b.className.replace('bg-blue-50 text-blue-600', 'hover:bg-gray-100 text-gray-600');
+            });
+            if (btnElement) {
+                btnElement.className = btnElement.className.replace('hover:bg-gray-100 text-gray-600', 'bg-blue-50 text-blue-600');
+            }
+
+            // Update Breadcrumb
+            els.breadcrumb.innerHTML = `
+                <span class="text-gray-500">${module.title}</span>
+                <i class="fa-solid fa-chevron-right text-[10px] mx-2 opacity-30"></i>
+                <span class="font-bold text-gray-800">${page.title}</span>
+            `;
+
+            // Update Device Frame (Adaptive Mode)
+            // Check if page or module has specific type
+            const targetType = page.type || module.type;
+            updateDeviceFrame(targetType);
+
+            // Update Iframe
+            if (els.iframe.src.indexOf(page.path) === -1) {
+                // Add random query param to prevent caching during dev
+                els.iframe.src = page.path;
+            }
+
+            // Update Info Panel
+            renderInfoPanel(page);
+        }
+
+        // Add a helper function to allow page navigation from inside iframes
+        window.navigateToPage = function(pageId) {
+            // Find the module and page by pageId
+            for (const module of prototypeConfig.modules) {
+                const page = module.pages.find(p => p.id === pageId);
+                if (page) {
+                    selectPage(module, page);
+                    return true;
+                }
+            }
+            console.error(`Page with ID '${pageId}' not found in config.js`);
+            return false;
+        };
+
+        // Render Info Panel
+        function renderInfoPanel(page) {
+            const { description } = page;
+            
+            // Tags
+            const tags = [];
+            if (page.status) tags.push(`<span class="px-2 py-1 rounded bg-gray-100 text-xs text-gray-500 capitalize">${page.status}</span>`);
+            
+            let html = `
+                <div class="animate-fade-in">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">${page.title}</h3>
+                        <div class="flex gap-2">${tags.join('')}</div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <!-- Summary -->
+                        <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <h4 class="text-xs font-bold text-blue-800 uppercase mb-2 opacity-70">功能概述</h4>
+                            <p class="text-sm text-blue-900 leading-relaxed">
+                                ${description?.summary || '暂无描述'}
+                            </p>
+                        </div>
+                        
+                        <!-- Flows -->
+                        ${renderListSection('用户流程', 'fa-location-arrow', description?.flows)}
+                        
+                        <!-- Features -->
+                        ${renderListSection('核心功能', 'fa-star', description?.features)}
+                    </div>
+                </div>
+            `;
+            
+            els.info.innerHTML = html;
+        }
+
+        function renderListSection(title, icon, items) {
+            if (!items || items.length === 0) return '';
+            return `
+                <div>
+                    <h4 class="flex items-center text-sm font-bold text-gray-800 mb-3">
+                        <span class="w-6 h-6 rounded bg-gray-100 flex items-center justify-center mr-2 text-xs text-gray-500">
+                            <i class="fa-solid ${icon}"></i>
+                        </span>
+                        ${title}
+                    </h4>
+                    <ul class="space-y-2">
+                        ${items.map(item => `
+                            <li class="text-sm text-gray-600 flex items-start gap-2 pl-1">
+                                <span class="mt-1.5 w-1 h-1 rounded-full bg-gray-300 shrink-0"></span>
+                                <span class="leading-relaxed">${item}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Auto-select first available page
+        function autoSelectFirstPage() {
+            const firstModule = prototypeConfig.modules[0];
+            if (firstModule) {
+                const firstPage = firstModule.pages.find(p => p.status !== 'pending');
+                if (firstPage) {
+                    // Find the button
+                    const btn = document.querySelector(`button[data-page-id="${firstPage.id}"]`);
+                    selectPage(firstModule, firstPage, btn);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
